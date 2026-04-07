@@ -116,6 +116,189 @@ gokaskad --flush   # Flush all iptables rules (silent mode)
 gokaskad --help    # Show help message
 ```
 
+## Main Menu Layout
+
+### Interactive Menu Guide
+When you run sudo gokaskad without arguments, you'll see intuitive menu with 10 options. 
+Here's how to use each one:
+
+```bash
+======================================================
+       GOKASKAD - Port Forwarding Tool
+======================================================
+
+Available actions:
+
+  1) Add new forwarding rule
+  2) List active rules
+  3) Delete one rule
+  4) Reset ALL settings
+  5) Save configuration
+  6) Restore configuration
+  7) Install autostart
+  8) Remove autostart
+  9) System diagnostics
+  0) Exit
+
+======================================================
+Your choice:
+```
+
+## Detailed Menu Options Guide
+### Option 1: Add New Forwarding Rule
+
+Creates a new port forwarding rule. The script will guide you through:
+
+1. **Protocol Selection**: Choose tcp or udp
+
+2. **Destination IP**: Enter the target server's IP address (validated automatically)
+
+3. **Port Configuration**:
+
+   - Option 1: Same port for input and output (e.g., 8080 -> 8080)
+
+   - Option 2: Different ports (e.g., local port 8080 -> remote port 9090)
+
+Example workflow:
+
+```bash
+Select protocol (tcp or udp): tcp
+Enter destination IP address: 192.168.1.100
+Port configuration:
+  1) Same port for input and output
+  2) Different ports
+Choose (1/2): 1
+Enter port number: 8080
+```
+The rule is immediately applied and saved to configuration.
+
+### Option 2: List Active Rules
+Displays all currently active forwarding rules in a clean table format:
+
+```bash
+PORT (IN)    PROTOCOL    DESTINATION (IP:OUT)
+8080         tcp         192.168.1.100:8080
+9090         udp         10.0.0.5:53
+```
+Shows which ports are forwarded, to which IP addresses, and the protocol used.
+
+### Option 3: Delete One Rule
+Interactive rule deletion:
+
+1. Shows numbered list of all active rules
+
+2. Enter the rule number you want to delete
+
+3. Confirms deletion and updates configuration
+
+Example:
+
+```bash
+[1] Input: 8080 (tcp) -> Output: 192.168.1.100:8080
+[2] Input: 9090 (udp) -> Output: 10.0.0.5:53
+Rule number to delete (0 to cancel): 1
+[OK] Rule deleted.
+```
+### Option 4: Reset ALL Settings
+
+This completely flushes ALL iptables rules:
+
+   - Creates an automatic backup before flushing
+
+   - Resets all chains (INPUT, FORWARD, OUTPUT) to ACCEPT policy
+
+   - Clears NAT, MANGLE, and FILTER tables
+
+   - Removes all custom chains
+
+   - Clears the configuration file
+
+You will be prompted to confirm with y/n before any changes are made.
+
+### Option 5: Save Configuration
+Manually saves current iptables rules to `/etc/gokaskad/rules.conf`:
+
+   - Parses all DNAT rules from iptables
+
+   - Saves in format: `protocol:input_port:target_ip:target_port`
+
+   - Shows saved rules on screen
+
+Useful for backing up current configuration
+
+### Option 6: Restore Configuration
+Loads rules from saved configuration file:
+
+   - Reads `/etc/gokaskad/rules.conf`
+
+   - Applies each rule from the file
+
+   - Shows progress for each restored rule
+
+   - Lists active rules after restoration
+
+Perfect for recovering after system reboot (used by autostart service)
+
+### Option 7: Install Autostart
+Sets up the script to run automatically on system boot:
+
+   - Creates systemd service file (`/etc/systemd/system/gokaskad.service`)
+
+   - Enables the service to start at boot
+
+   - Starts the service immediately
+
+   - Saves current rules to configuration
+
+Works on both Debian/Ubuntu and RHEL/CentOS systems
+
+Management commands after installation:
+
+```bash
+systemctl status gokaskad   # Check service status
+systemctl restart gokaskad  # Restore rules manually
+systemctl stop gokaskad      # Stop automatic restoration
+```
+### Option 8: Remove Autostart
+Disables and removes the autostart service:
+
+   - Stops the running service
+
+   - Disables service from starting at boot
+
+   - Removes systemd service file
+
+***Does NOT delete current iptables rules or configuration***
+
+### Option 9: System Diagnostics
+Comprehensive system information display:
+
+```bash
+SYSTEM DIAGNOSTICS
+========================================
+
+Server IP address:  203.0.113.10
+
+Main interface:     eth0
+
+Google BBR:         Active (bbr)
+
+IP Forwarding:      Enabled
+
+Active rules in iptables: 2
+
+Saved rules in config: 2
+Config content:
+  tcp:8080:192.168.1.100:8080
+  udp:9090:10.0.0.5:53
+
+Autostart service:  Active
+```
+Helps troubleshoot connectivity and configuration issues.
+
+### Option 0: Exit
+Gracefully exits the script with a friendly goodbye message.
+
 ## Use Cases
 
 1. **VPN Cascading** - Forward WireGuard/OpenVPN traffic through a middle server
