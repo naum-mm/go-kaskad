@@ -51,28 +51,6 @@ OpenBSD-скрипт остаётся отдельным CLI, веб-панел�
 
 [Мобильный вид](docs/panel-mobile.png) · [Скачать автономный HTML-макет](docs/preview.html)
 
-На странице HTML-файла нажмите **Download raw file**, сохраните `preview.html`
-и откройте его в браузере. Интернет, Docker и сервер не нужны. Это демонстрация:
-правила в ней — примеры, изменения действуют только до закрытия страницы.
-GitHub показывает исходный HTML, поэтому обычная ссылка на файл не открывает сайт.
-
-### Если панель не открывается
-
-Ошибка **“The plain HTTP request was sent to HTTPS port”** означает, что адрес
-открыт через `http://`. Используйте **`https://IP-сервера:ПОРТ`**.
-В новой версии HTTP на порту панели автоматически перенаправляется на HTTPS.
-Для уже установленной версии выполните на сервере:
-
-```bash
-cd /opt/go-kaskad/current
-sudo cp web/nginx/nginx.conf web/nginx/nginx.conf.bak
-sudo curl -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/web/nginx/nginx.conf -o web/nginx/nginx.conf
-sudo docker compose exec -T nginx nginx -t && sudo docker compose restart nginx
-```
-
-Пароль, порт и правила сохранятся. Предупреждение о самоподписанном сертификате
-возможно и после перенаправления; сверьте отпечаток из установщика.
-
 ### Удаление с сервера
 
 **Удаляются все правила панели, база данных, пароль и сертификат. Восстановление
@@ -148,27 +126,6 @@ requires Linux.
 ### Preview without installing
 
 [Desktop preview](docs/panel-preview.png) · [Mobile preview](docs/panel-mobile.png) · [Standalone HTML demo](docs/preview.html)
-
-Open the HTML file on GitHub, choose **Download raw file**, save `preview.html`,
-and open it in your browser. No Internet connection, Docker, or server is needed.
-The demo contains sample rules; changes last only until the page is closed.
-GitHub displays HTML source rather than running it as a website.
-
-### Connection error after installation
-
-**“The plain HTTP request was sent to HTTPS port”** means the address was opened
-using `http://`. Use **`https://SERVER-IP:PORT`**. New installations redirect HTTP
-to HTTPS automatically. To fix an existing installation without losing data:
-
-```bash
-cd /opt/go-kaskad/current
-sudo cp web/nginx/nginx.conf web/nginx/nginx.conf.bak
-sudo curl -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/web/nginx/nginx.conf -o web/nginx/nginx.conf
-sudo docker compose exec -T nginx nginx -t && sudo docker compose restart nginx
-```
-
-Your password, port, and rules are preserved. The browser may still show a
-self-signed certificate warning; verify the installer's certificate fingerprint.
 
 ### Uninstall
 
