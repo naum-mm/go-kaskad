@@ -1,22 +1,234 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Gokaskad · Демо / Demo</title>
-  <style>:root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#192526;background:#f6f8f7;font-synthesis:none}*{box-sizing:border-box}body{margin:0;display:flex;min-height:100vh}button,input,select{font:inherit}button{border:0;border-radius:8px;background:#16765d;color:white;padding:12px 18px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s}button:hover{background:#105d49}button:disabled{opacity:.5;cursor:wait}button:focus-visible,a:focus-visible{outline:3px solid #6acbb0;outline-offset:3px}aside{width:246px;flex-shrink:0;background:#fff;border-right:1px solid #e4eae7;padding:38px 22px;display:flex;flex-direction:column}.brand{font-size:28px;letter-spacing:-1.4px;font-weight:750;color:#183b30;text-decoration:none}.brand span{color:#209274}.nav-label{margin-top:65px;font-size:10px;letter-spacing:1.6px;color:#8b9692}.nav-active{display:flex;gap:12px;align-items:center;margin-top:16px;padding:14px 10px;background:#eaf4ef;color:#216c54;font-size:12px;line-height:1.5;border-radius:8px;text-decoration:none;font-weight:650}.aside-footer{margin-top:auto;padding-top:40px;color:#62766b;font-size:9px;letter-spacing:1px;line-height:2}.aside-footer span{color:#929e98;letter-spacing:0;font-size:10px}main{min-width:0;flex:1;padding:0 48px;max-width:1600px}header{height:88px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e3e9e6;font-size:12px;color:#8a9690}header b{font-weight:500;color:#43574c}.badge{font-size:11px;padding:7px 10px;border:1px solid #dce5df;border-radius:20px;background:white;color:#819087}.online{color:#237e5d}.offline{color:#af413a}.title{display:flex;justify-content:space-between;align-items:center;gap:20px;margin:46px 0 32px}.eyebrow{font-size:10px;letter-spacing:1.7px;color:#72877b;font-weight:650}h1{font-size:29px;letter-spacing:-1px;margin:11px 0 12px;font-weight:650}.title p{font-size:13px;color:#7e8b84;margin:0}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.stats article{background:white;border:1px solid #e2e9e4;border-radius:11px;padding:23px 25px;display:flex;flex-direction:column}.stats span{font-size:12px;color:#738179}.stats strong{overflow-wrap:anywhere;font-size:30px;font-weight:600;margin:14px 0 8px;letter-spacing:-1px}.stats small{font-size:11px;color:#98a39c}.rules-panel{margin-top:30px;border:1px solid #e1e8e3;border-radius:12px;background:white;overflow:hidden}.panel-head{padding:21px 24px;display:flex;align-items:center;justify-content:space-between}h2{margin:0;font-size:15px;font-weight:650}.panel-head h2 span{font-size:11px;margin-left:8px;border-radius:5px;padding:3px 7px;background:#eff3f0;color:#79877d}.secondary{background:white;color:#62746a;border:1px solid #e0e7e2;font-weight:500;padding:9px 12px;font-size:12px}.secondary:hover{background:#edf4ef}.table-wrap{position:relative;overflow:auto}table{border-collapse:collapse;width:100%;text-align:left;white-space:nowrap}th{background:#f8faf8;color:#91a095;font-size:9px;font-weight:600;letter-spacing:.7px;padding:15px 18px;border-block:1px solid #edf0ed}td{padding:20px 18px;font-size:12px;border-bottom:1px solid #edf1ee}.rule-name{font-weight:600}.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}.destination{color:#667c6c}.status{padding:5px 8px;border-radius:5px;font-size:10px;background:#eff2ef;color:#7e8a80;white-space:nowrap}.status:hover{background:#e0e8e0}.status.enabled{background:#eaf6ef;color:#237e54}.actions{display:flex;gap:5px}.small{font-size:11px;padding:6px 9px}.panel-foot{padding:16px 24px;color:#95a197;font-size:11px;background:#fcfdfc}#empty{padding:45px 20px 55px;text-align:center}.empty-icon{color:#4c8c73;background:#ecf5f0;border:1px solid #d9e9df;border-radius:13px;width:52px;height:52px;margin:auto;font-size:27px;padding:8px}h3{font-size:15px;margin-top:21px}#empty p{font-size:12px;color:#8c9b90;margin-bottom:24px}footer{display:flex;justify-content:space-between;color:#a1aca5;font-size:9px;letter-spacing:1.5px;padding:27px 0}footer span{letter-spacing:0;font-size:11px}#message{padding:13px 18px;border-radius:8px;font-size:13px;margin-top:22px}.success{background:#e5f3ea;color:#216744}.error{background:#fcecea;color:#b13c32}dialog{border:1px solid #e0e8e2;border-radius:15px;width:480px;max-width:calc(100vw - 32px);padding:28px;box-shadow:0 24px 80px #0b2c1b33}dialog::backdrop{background:#142f2266;backdrop-filter:blur(3px)}.dialog-title{display:flex;align-items:center;justify-content:space-between}.dialog-title h2{font-size:20px}.icon{font-size:20px;line-height:1;padding:5px 9px}.hint{font-size:12px;color:#88988c;line-height:1.7;margin-bottom:24px}label{display:flex;flex-direction:column;gap:8px;font-size:12px;color:#536b5b;margin:16px 0}input,select{border:1px solid #dce6df;padding:11px 12px;border-radius:7px;width:100%;background:#fff;color:#233b2b;font-size:13px}input:focus,select:focus{outline:2px solid #c5e5d6;border-color:#529675}.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}.form-row label{margin:0 0 16px}.check{flex-direction:row;align-items:center}.check input{width:auto;accent-color:#16765d}.dialog-actions{display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #edf1ee;padding-top:20px;margin-top:24px}#form-error{font-size:12px;color:#b13c32}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}[hidden]{display:none!important}@media(max-width:1100px){aside{width:200px;padding-inline:18px}main{padding:0 26px}.title{align-items:flex-start}h1{font-size:25px}.title>button{white-space:nowrap}td,th{padding-inline:12px}}@media(max-width:760px){body{display:block}aside{width:100%;padding:20px 24px;border-right:0;border-bottom:1px solid #e4eae7}.nav-label,.nav-active,.aside-footer{display:none}.brand{font-size:25px}main{padding:0 20px}header{height:65px;font-size:10px}.badge{font-size:9px}.title{margin-top:30px;flex-direction:column;gap:22px}h1{font-size:25px}.stats{gap:8px}.stats article{padding:17px 13px}.stats strong{overflow-wrap:anywhere;font-size:24px}.stats small{font-size:9px}.stats span{font-size:10px}.panel-head{padding:18px 14px}.panel-head h2{font-size:13px}.panel-foot{font-size:10px;padding-inline:14px}footer span{font-size:9px}}
+  <style>:root {
+  color-scheme: light;
+  --cream: #fbf7ea;
+  --paper: #fffdf5;
+  --indigo: #2c246c;
+  --indigo-dark: #20194f;
+  --blue: #78afd0;
+  --blue-light: #e3eff5;
+  --ochre: #b2964d;
+  --ochre-light: #f3ebd6;
+  --ink: #302d52;
+  --muted: #716c82;
+  --border: #e4ddcb;
+  --rust: #b54429;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--cream);
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; }
+button, input, select { font: inherit; }
+button {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--indigo);
+  color: var(--paper);
+  padding: 12px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+button:hover { background: var(--indigo-dark); }
+button:disabled { opacity: .5; cursor: wait; }
+button:focus-visible, a:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 4px;
+}
+main { width: 100%; max-width: 1328px; margin: 0 auto; padding: 0 56px 64px; }
+header {
+  min-height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.brand {
+  color: var(--indigo);
+  text-decoration: none;
+  font-size: 32px;
+  line-height: 1.2;
+  font-weight: 750;
+  letter-spacing: -1.7px;
+}
+.brand span { color: #5187ad; }
+.badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--muted);
+  background: var(--paper);
+}
+.online { color: var(--indigo); background: var(--blue-light); border-color: #c3dce9; }
+.offline { color: var(--rust); background: #f8e8df; border-color: #ead1c6; }
+.title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  margin: 44px 0 30px;
+}
+h1 { color: var(--indigo); font-size: 32px; letter-spacing: -1px; margin: 0; font-weight: 650; }
+.title > button { white-space: nowrap; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.stats article {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 26px;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--ochre);
+  border-radius: 10px;
+}
+.stats article:nth-child(2) { border-top-color: var(--blue); }
+.stats article:nth-child(3) { border-top-color: var(--indigo); }
+.stats span { color: var(--muted); font-size: 12px; }
+.stats strong { color: var(--indigo); font-size: 31px; font-weight: 600; margin: 14px 0 8px; letter-spacing: -.8px; overflow-wrap: anywhere; }
+.stats small { color: var(--muted); font-size: 11px; }
+.rules-panel { margin-top: 30px; border: 1px solid var(--border); border-radius: 12px; background: var(--paper); overflow: hidden; }
+.panel-head { padding: 23px 26px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+h2 { color: var(--indigo); margin: 0; font-size: 15px; font-weight: 650; }
+.panel-head h2 span { margin-left: 8px; padding: 3px 7px; border-radius: 5px; background: var(--ochre-light); color: #75602e; font-size: 11px; }
+.secondary { background: transparent; color: var(--indigo); border-color: var(--border); font-weight: 500; padding: 9px 12px; font-size: 12px; }
+.secondary:hover { background: var(--ochre-light); border-color: #cdbd94; }
+.table-wrap { position: relative; overflow: auto; }
+table { border-collapse: collapse; width: 100%; text-align: left; white-space: nowrap; }
+th { color: #625b7c; background: #f4f0e4; font-size: 9px; font-weight: 650; letter-spacing: .7px; padding: 16px 20px; border-block: 1px solid var(--border); }
+td { padding: 22px 20px; font-size: 12px; border-bottom: 1px solid #ece5d7; }
+tbody tr:last-child td { border-bottom: 0; }
+.rule-name { font-weight: 600; }
+.mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
+.destination { color: #465d7e; }
+.status { padding: 5px 9px; border: 1px solid #e2d6b7; border-radius: 5px; font-size: 10px; background: var(--ochre-light); color: #75602e; white-space: nowrap; }
+.status:hover { background: #e9ddbd; }
+.status.enabled { background: var(--blue-light); color: var(--indigo); border-color: #c4dce9; }
+.status.enabled:hover { background: #cfE3ef; }
+.actions { display: flex; gap: 6px; }
+.small { font-size: 11px; padding: 6px 10px; }
+.panel-foot { padding: 17px 26px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; background: #f8f4e8; }
+#empty { padding: 48px 20px 56px; text-align: center; }
+.empty-icon { color: var(--indigo); background: var(--blue-light); border: 1px solid #c4dce9; border-radius: 13px; width: 52px; height: 52px; margin: auto; font-size: 27px; padding: 8px; }
+h3 { color: var(--indigo); font-size: 15px; margin-top: 21px; }
+#empty p { font-size: 12px; color: var(--muted); margin-bottom: 24px; }
+#message { padding: 13px 18px; border-radius: 8px; font-size: 13px; margin-top: 22px; }
+.success { background: var(--blue-light); color: var(--indigo); }
+.error { background: #f8e8df; color: var(--rust); }
+.demo-note { padding: 12px 16px; margin: 20px 0 0; border: 1px solid #e1d2ad; border-radius: 8px; background: var(--ochre-light); color: #75602e; font-size: 11px; line-height: 1.6; }
+dialog { border: 1px solid var(--border); border-radius: 15px; width: 480px; max-width: calc(100vw - 32px); padding: 28px; background: var(--paper); color: var(--ink); box-shadow: 0 24px 80px #2c246c26; }
+dialog::backdrop { background: #20194f66; backdrop-filter: blur(3px); }
+.dialog-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.dialog-title h2 { font-size: 20px; }
+.icon { font-size: 20px; line-height: 1; padding: 5px 9px; }
+.hint { font-size: 12px; color: var(--muted); line-height: 1.7; margin-bottom: 24px; }
+label { display: flex; flex-direction: column; gap: 8px; font-size: 12px; color: var(--ink); margin: 16px 0; }
+input, select { border: 1px solid #d7cfb9; padding: 11px 12px; border-radius: 7px; width: 100%; min-width: 0; background: var(--paper); color: var(--indigo); font-size: 13px; }
+input:focus, select:focus { outline: 2px solid var(--blue-light); border-color: #5187ad; }
+.form-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.form-row label { margin: 0 0 16px; }
+.check { flex-direction: row; align-items: center; }
+.check input { width: auto; accent-color: var(--indigo); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border); padding-top: 20px; margin-top: 24px; }
+#form-error { font-size: 12px; color: var(--rust); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+[hidden] { display: none !important; }
+
+@media (max-width: 900px) {
+  main { padding-inline: 32px; }
+  h1 { font-size: 28px; }
+  td, th { padding-inline: 16px; }
+}
+@media (max-width: 600px) {
+  main { padding: 0 20px 40px; }
+  header { min-height: 88px; gap: 10px; }
+  .brand { font-size: 28px; }
+  .badge { font-size: 9px; padding: 7px 9px; }
+  .title { margin: 30px 0 24px; flex-direction: column; align-items: flex-start; gap: 20px; }
+  h1 { font-size: 26px; line-height: 1.25; }
+  .stats { gap: 8px; }
+  .stats article { padding: 17px 12px; }
+  .stats strong { font-size: 24px; }
+  .stats small { font-size: 10px; line-height: 1.5; }
+  .stats span { font-size: 11px; }
+  .panel-head { padding: 18px 14px; }
+  .panel-head h2 { font-size: 13px; }
+  .panel-foot { font-size: 10px; padding-inline: 14px; line-height: 1.6; }
+  .demo-note { margin-top: 16px; font-size: 10px; }
+}
 </style>
 </head>
 <body>
-  <aside><a class="brand" href="/">g<span>o</span>kaskad</a><div class="nav-label">УПРАВЛЕНИЕ</div><a class="nav-active" href="/">⇄ <span>Перенаправление портов</span></a><div class="aside-footer">ПАНЕЛЬ АДМИНИСТРАТОРА<br><span>Локальный макет · без подключения</span></div></aside>
-  <main><p class="success" style="padding:12px;border-radius:8px">ДЕМО / DEMO — примеры правил. Изменения действуют только до закрытия страницы; сервером этот макет не управляет. / Sample rules only. This preview does not control a server.</p>
-    <header><span>Рабочее пространство / <b>Правила</b></span><span id="connection" class="badge">Подключение…</span></header>
-    <section class="title"><div><div class="eyebrow">СЕТЬ ПОД КОНТРОЛЕМ</div><h1>Перенаправление портов</h1><p>Управляйте маршрутами TCP и UDP на вашем сервере.</p></div><button id="new-rule">＋ Новое правило</button></section>
-    <section class="stats"><article><span>Всего правил</span><strong id="total">—</strong><small>Сохранено на сервере</small></article><article><span>Активные</span><strong id="active">—</strong><small>Перенаправляют трафик</small></article><article><span>Протоколы</span><strong id="protocols">—</strong><small>TCP / UDP</small></article></section>
+  <main><p class="demo-note">ДЕМО / DEMO · Примеры правил, без подключения к серверу. / Sample rules, no server connection.</p>
+    <header id="top">
+      <a class="brand" href="#top" aria-label="Gokaskad — главная">g<span>o</span>kaskad</a>
+      <span id="connection" class="badge">Подключение…</span>
+    </header>
+
+    <section class="title">
+      <h1>Перенаправление портов</h1>
+      <button id="new-rule">＋ Новое правило</button>
+    </section>
+
+    <section class="stats" aria-label="Сводка правил">
+      <article><span>Всего правил</span><strong id="total">—</strong><small>Сохранено на сервере</small></article>
+      <article><span>Активные</span><strong id="active">—</strong><small>Перенаправляют трафик</small></article>
+      <article><span>Протоколы</span><strong id="protocols">—</strong><small>TCP / UDP</small></article>
+    </section>
+
     <div id="message" role="status" hidden></div>
-    <section class="rules-panel"><div class="panel-head"><h2>Правила маршрутизации <span id="count">0</span></h2><button id="refresh" class="secondary">↻ Обновить</button></div><div class="table-wrap"><table><thead><tr><th>ПРАВИЛО</th><th>ПРОТОКОЛ</th><th>ВХОДЯЩИЙ ПОРТ</th><th>НАЗНАЧЕНИЕ</th><th>СТАТУС</th><th><span class="sr-only">Действия</span></th></tr></thead><tbody id="rules"></tbody></table></div><div id="empty" hidden><div class="empty-icon">⇄</div><h3>Маршруты начинаются здесь</h3><p>Добавьте правило, чтобы направить трафик на нужный сервер.</p><button id="empty-new">Создать первое правило</button></div><div class="panel-foot">Изменения применяются сразу. Порт панели зарезервирован.</div></section>
-    <footer>GOKASKAD <span>Ваш трафик. Ваши правила.</span></footer>
+
+    <section class="rules-panel">
+      <div class="panel-head">
+        <h2>Правила маршрутизации <span id="count">0</span></h2>
+        <button id="refresh" class="secondary">↻ Обновить</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ПРАВИЛО</th><th>ПРОТОКОЛ</th><th>ВХОДЯЩИЙ ПОРТ</th><th>НАЗНАЧЕНИЕ</th><th>СТАТУС</th><th><span class="sr-only">Действия</span></th></tr></thead>
+          <tbody id="rules"></tbody>
+        </table>
+      </div>
+      <div id="empty" hidden>
+        <div class="empty-icon">⇄</div>
+        <h3>Маршруты начинаются здесь</h3>
+        <p>Добавьте правило, чтобы направить трафик на нужный сервер.</p>
+        <button id="empty-new">Создать первое правило</button>
+      </div>
+      <div class="panel-foot">Изменения применяются сразу. Порт панели зарезервирован.</div>
+    </section>
   </main>
-  <dialog id="editor"><form id="rule-form"><div class="dialog-title"><h2 id="editor-title">Новое правило</h2><button type="button" class="icon secondary" id="close-editor" aria-label="Закрыть">×</button></div><p class="hint">Настройте маршрут от входящего порта к серверу назначения.</p><input type="hidden" name="id"><label>Название<input name="name" maxlength="100" placeholder="Например, VPN-сервер"></label><div class="form-row"><label>Протокол<select name="protocol"><option value="tcp">TCP</option><option value="udp">UDP</option></select></label><label>Входящий порт<input name="input_port" type="number" min="1" max="65535" required placeholder="8080"></label></div><div class="form-row"><label>IPv4 назначения<input name="target_ip" required placeholder="192.0.2.10"></label><label>Порт назначения<input name="target_port" type="number" min="1" max="65535" required placeholder="80"></label></div><label class="check"><input name="enabled" type="checkbox" checked> Включить правило</label><p id="form-error" role="alert"></p><div class="dialog-actions"><button type="button" class="secondary" id="cancel-editor">Отмена</button><button type="submit" id="submit-rule">Сохранить правило</button></div></form></dialog>
+
+  <dialog id="editor">
+    <form id="rule-form">
+      <div class="dialog-title"><h2 id="editor-title">Новое правило</h2><button type="button" class="icon secondary" id="close-editor" aria-label="Закрыть">×</button></div>
+      <p class="hint">Настройте маршрут от входящего порта к серверу назначения.</p>
+      <input type="hidden" name="id">
+      <label>Название<input name="name" maxlength="100" placeholder="Например, VPN-сервер"></label>
+      <div class="form-row">
+        <label>Протокол<select name="protocol"><option value="tcp">TCP</option><option value="udp">UDP</option></select></label>
+        <label>Входящий порт<input name="input_port" type="number" min="1" max="65535" required placeholder="8080"></label>
+      </div>
+      <div class="form-row">
+        <label>IPv4 назначения<input name="target_ip" required placeholder="192.0.2.10"></label>
+        <label>Порт назначения<input name="target_port" type="number" min="1" max="65535" required placeholder="80"></label>
+      </div>
+      <label class="check"><input name="enabled" type="checkbox" checked> Включить правило</label>
+      <p id="form-error" role="alert"></p>
+      <div class="dialog-actions"><button type="button" class="secondary" id="cancel-editor">Отмена</button><button type="submit" id="submit-rule">Сохранить правило</button></div>
+    </form>
+  </dialog>
 <script>const $ = (id) => document.getElementById(id);
 let rules = [];
 let busy = false;
@@ -125,4 +337,5 @@ $('new-rule').onclick = $('empty-new').onclick = () => edit();
 $('close-editor').onclick = $('cancel-editor').onclick = () => $('editor').close();
 $('refresh').onclick = refresh;
 refresh();
-</script></body></html>
+</script></body>
+</html>

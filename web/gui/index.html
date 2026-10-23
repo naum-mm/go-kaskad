@@ -1,19 +1,70 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Gokaskad · Управление трафиком</title>
   <link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script>
 </head>
 <body>
-  <aside><a class="brand" href="/">g<span>o</span>kaskad</a><div class="nav-label">УПРАВЛЕНИЕ</div><a class="nav-active" href="/">⇄ <span>Перенаправление портов</span></a><div class="aside-footer">ПАНЕЛЬ АДМИНИСТРАТОРА<br><span>Защищённое соединение · HTTPS</span></div></aside>
   <main>
-    <header><span>Рабочее пространство / <b>Правила</b></span><span id="connection" class="badge">Подключение…</span></header>
-    <section class="title"><div><div class="eyebrow">СЕТЬ ПОД КОНТРОЛЕМ</div><h1>Перенаправление портов</h1><p>Управляйте маршрутами TCP и UDP на вашем сервере.</p></div><button id="new-rule">＋ Новое правило</button></section>
-    <section class="stats"><article><span>Всего правил</span><strong id="total">—</strong><small>Сохранено на сервере</small></article><article><span>Активные</span><strong id="active">—</strong><small>Перенаправляют трафик</small></article><article><span>Протоколы</span><strong id="protocols">—</strong><small>TCP / UDP</small></article></section>
+    <header id="top">
+      <a class="brand" href="/" aria-label="Gokaskad — главная">g<span>o</span>kaskad</a>
+      <span id="connection" class="badge">Подключение…</span>
+    </header>
+
+    <section class="title">
+      <h1>Перенаправление портов</h1>
+      <button id="new-rule">＋ Новое правило</button>
+    </section>
+
+    <section class="stats" aria-label="Сводка правил">
+      <article><span>Всего правил</span><strong id="total">—</strong><small>Сохранено на сервере</small></article>
+      <article><span>Активные</span><strong id="active">—</strong><small>Перенаправляют трафик</small></article>
+      <article><span>Протоколы</span><strong id="protocols">—</strong><small>TCP / UDP</small></article>
+    </section>
+
     <div id="message" role="status" hidden></div>
-    <section class="rules-panel"><div class="panel-head"><h2>Правила маршрутизации <span id="count">0</span></h2><button id="refresh" class="secondary">↻ Обновить</button></div><div class="table-wrap"><table><thead><tr><th>ПРАВИЛО</th><th>ПРОТОКОЛ</th><th>ВХОДЯЩИЙ ПОРТ</th><th>НАЗНАЧЕНИЕ</th><th>СТАТУС</th><th><span class="sr-only">Действия</span></th></tr></thead><tbody id="rules"></tbody></table></div><div id="empty" hidden><div class="empty-icon">⇄</div><h3>Маршруты начинаются здесь</h3><p>Добавьте правило, чтобы направить трафик на нужный сервер.</p><button id="empty-new">Создать первое правило</button></div><div class="panel-foot">Изменения применяются сразу. Порт панели зарезервирован.</div></section>
-    <footer>GOKASKAD <span>Ваш трафик. Ваши правила.</span></footer>
+
+    <section class="rules-panel">
+      <div class="panel-head">
+        <h2>Правила маршрутизации <span id="count">0</span></h2>
+        <button id="refresh" class="secondary">↻ Обновить</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ПРАВИЛО</th><th>ПРОТОКОЛ</th><th>ВХОДЯЩИЙ ПОРТ</th><th>НАЗНАЧЕНИЕ</th><th>СТАТУС</th><th><span class="sr-only">Действия</span></th></tr></thead>
+          <tbody id="rules"></tbody>
+        </table>
+      </div>
+      <div id="empty" hidden>
+        <div class="empty-icon">⇄</div>
+        <h3>Маршруты начинаются здесь</h3>
+        <p>Добавьте правило, чтобы направить трафик на нужный сервер.</p>
+        <button id="empty-new">Создать первое правило</button>
+      </div>
+      <div class="panel-foot">Изменения применяются сразу. Порт панели зарезервирован.</div>
+    </section>
   </main>
-  <dialog id="editor"><form id="rule-form"><div class="dialog-title"><h2 id="editor-title">Новое правило</h2><button type="button" class="icon secondary" id="close-editor" aria-label="Закрыть">×</button></div><p class="hint">Настройте маршрут от входящего порта к серверу назначения.</p><input type="hidden" name="id"><label>Название<input name="name" maxlength="100" placeholder="Например, VPN-сервер"></label><div class="form-row"><label>Протокол<select name="protocol"><option value="tcp">TCP</option><option value="udp">UDP</option></select></label><label>Входящий порт<input name="input_port" type="number" min="1" max="65535" required placeholder="8080"></label></div><div class="form-row"><label>IPv4 назначения<input name="target_ip" required placeholder="192.0.2.10"></label><label>Порт назначения<input name="target_port" type="number" min="1" max="65535" required placeholder="80"></label></div><label class="check"><input name="enabled" type="checkbox" checked> Включить правило</label><p id="form-error" role="alert"></p><div class="dialog-actions"><button type="button" class="secondary" id="cancel-editor">Отмена</button><button type="submit" id="submit-rule">Сохранить правило</button></div></form></dialog>
-</body></html>
+
+  <dialog id="editor">
+    <form id="rule-form">
+      <div class="dialog-title"><h2 id="editor-title">Новое правило</h2><button type="button" class="icon secondary" id="close-editor" aria-label="Закрыть">×</button></div>
+      <p class="hint">Настройте маршрут от входящего порта к серверу назначения.</p>
+      <input type="hidden" name="id">
+      <label>Название<input name="name" maxlength="100" placeholder="Например, VPN-сервер"></label>
+      <div class="form-row">
+        <label>Протокол<select name="protocol"><option value="tcp">TCP</option><option value="udp">UDP</option></select></label>
+        <label>Входящий порт<input name="input_port" type="number" min="1" max="65535" required placeholder="8080"></label>
+      </div>
+      <div class="form-row">
+        <label>IPv4 назначения<input name="target_ip" required placeholder="192.0.2.10"></label>
+        <label>Порт назначения<input name="target_port" type="number" min="1" max="65535" required placeholder="80"></label>
+      </div>
+      <label class="check"><input name="enabled" type="checkbox" checked> Включить правило</label>
+      <p id="form-error" role="alert"></p>
+      <div class="dialog-actions"><button type="button" class="secondary" id="cancel-editor">Отмена</button><button type="submit" id="submit-rule">Сохранить правило</button></div>
+    </form>
+  </dialog>
+</body>
+</html>

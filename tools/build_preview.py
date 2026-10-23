@@ -32,11 +32,10 @@ script = script.replace('crypto.randomUUID()', 'demoUuid()')
 html = (gui / "index.html").read_text()
 html = html.replace('<link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script>',
                     '<style>' + (gui / "style.css").read_text() + '</style>')
-html = html.replace('<main>', '<main><p class="success" style="padding:12px;border-radius:8px">ДЕМО / DEMO — примеры правил. Изменения действуют только до закрытия страницы; сервером этот макет не управляет. / Sample rules only. This preview does not control a server.</p>')
+html = html.replace('<main>', '<main><p class="demo-note">ДЕМО / DEMO · Примеры правил, без подключения к серверу. / Sample rules, no server connection.</p>')
+html = html.replace('class="brand" href="/"', 'class="brand" href="#top"')
 html = html.replace('</body>', '<script>' + script + '</script></body>')
 html = html.replace('<title>Gokaskad · Управление трафиком</title>', '<title>Gokaskad · Демо / Demo</title>')
-html = html.replace('Панель администратора', 'Демонстрация')
-html = html.replace('Защищённое соединение · HTTPS', 'Локальный макет · без подключения')
 target = root / "docs/preview.html"
 target.write_text(html)
 print(target)
