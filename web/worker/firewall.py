@@ -38,6 +38,9 @@ def validate(rule):
             raise Invalid("The management port is reserved")
         if rule["protocol"] not in ("tcp", "udp") or type(rule.get("enabled", True)) is not bool:
             raise Invalid("Invalid protocol or enabled value")
+        reserved_tcp = {int(port) for port in os.environ.get("RESERVED_TCP_PORTS", "").split(",") if port}
+        if rule["protocol"] == "tcp" and rule["input_port"] in reserved_tcp:
+            raise Invalid("This TCP port is reserved for an existing service")
         name = rule.get("name", "")
         if not isinstance(name, str) or len(name) > 100 or any(ord(c) < 32 for c in name):
             raise Invalid("Name must contain at most 100 printable characters")

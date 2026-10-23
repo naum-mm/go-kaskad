@@ -43,6 +43,24 @@ fi
 MANAGEMENT_PORT=$((10#$MANAGEMENT_PORT))
 (( MANAGEMENT_PORT >= 1 && MANAGEMENT_PORT <= 65535 )) || { echo 'Порт должен быть от 1 до 65535.' >&2; exit 1; }
 
+# Optional settings for installation behind an existing reverse proxy.
+MANAGEMENT_BIND=${MANAGEMENT_BIND:-}
+[[ -z $MANAGEMENT_BIND || $MANAGEMENT_BIND == 127.0.0.1 ]] || {
+    echo 'MANAGEMENT_BIND: допустимо пустое значение или 127.0.0.1.' >&2; exit 1;
+}
+RESERVED_TCP_PORTS=${RESERVED_TCP_PORTS:-}
+if [[ -n $RESERVED_TCP_PORTS ]]; then
+    [[ $RESERVED_TCP_PORTS =~ ^[0-9]{1,5}(,[0-9]{1,5})*$ ]] || {
+        echo 'RESERVED_TCP_PORTS: ожидаются порты через запятую.' >&2; exit 1;
+    }
+    IFS=, read -ra reserved_ports <<<"$RESERVED_TCP_PORTS"
+    for port in "${reserved_ports[@]}"; do
+        (( 10#$port >= 1 && 10#$port <= 65535 )) || {
+            echo 'Зарезервированный порт должен быть от 1 до 65535.' >&2; exit 1;
+        }
+    done
+fi
+
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends ca-certificates curl openssl iproute2 iptables apache2-utils util-linux
@@ -90,7 +108,7 @@ openssl req -x509 -newkey rsa:3072 -sha256 -nodes -days 365 \
     -subj '/CN=Gokaskad' -addext "subjectAltName=$san" >/dev/null 2>&1
 backend=legacy
 if iptables --version | grep -q nf_tables; then backend=nft; fi
-printf 'MANAGEMENT_PORT=%s\nCONFIG_DIR=%s/config\nIPTABLES_BACKEND=%s\n' "$MANAGEMENT_PORT" "$root" "$backend" >"$release/.env"
+printf 'MANAGEMENT_PORT=%s\nCONFIG_DIR=%s/config\nIPTABLES_BACKEND=%s\nMANAGEMENT_BIND=%s\nRESERVED_TCP_PORTS=%s\n' "$MANAGEMENT_PORT" "$root" "$backend" "$MANAGEMENT_BIND" "$RESERVED_TCP_PORTS" >"$release/.env"
 printf 'net.ipv4.ip_forward=1\n' > /etc/sysctl.d/90-gokaskad.conf
 sysctl -w net.ipv4.ip_forward=1
 cd "$release"
@@ -108,7 +126,12 @@ curl --fail --silent --show-error --cacert "$root/config/tls/server.crt" \
 rm -f "$work/auth.header"
 ln -s "$release" "$root/current"
 echo
-echo "Готово. Откройте https://<IP-сервера>:$MANAGEMENT_PORT, пользователь: admin."
+if [[ $MANAGEMENT_BIND == 127.0.0.1 ]]; then
+    echo "Готово. Панель доступна только локально: https://127.0.0.1:$MANAGEMENT_PORT, пользователь: admin."
+    echo 'Подключите существующий reverse proxy для доступа через домен.'
+else
+    echo "Готово. Откройте https://<IP-сервера>:$MANAGEMENT_PORT, пользователь: admin."
+fi
 echo "Самоподписанный сертификат: $root/config/tls/server.crt"
 openssl x509 -in "$root/config/tls/server.crt" -noout -fingerprint -sha256
 echo "Сверьте отпечаток и добавьте сертификат в доверенные. Срок действия — 365 дней."

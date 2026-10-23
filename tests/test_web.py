@@ -44,6 +44,16 @@ class FirewallTests(unittest.TestCase):
             with self.subTest(field=field, value=value), self.assertRaises(fw.Invalid):
                 fw.validate(candidate)
 
+    def test_reverse_proxy_tcp_ports_are_reserved(self):
+        with patch.dict(os.environ, {"RESERVED_TCP_PORTS": "80,443"}):
+            for port in (80, 443):
+                candidate = dict(rule(), input_port=port)
+                with self.subTest(port=port), self.assertRaises(fw.Invalid):
+                    fw.validate(candidate)
+                candidate["protocol"] = "udp"
+                self.assertEqual(fw.validate(candidate)["input_port"], port)
+            self.assertEqual(fw.validate(rule())["input_port"], 8080)
+
     @patch.object(fw, "apply")
     def test_crud_persistence_and_collision(self, apply):
         first = rule()

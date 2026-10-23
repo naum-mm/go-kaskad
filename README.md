@@ -35,6 +35,22 @@ HTTPS-сертификат создаётся автоматически. Он �
 Если у сервера есть firewall или security group, разрешите выбранный порт панели
 и порты, которые хотите перенаправлять.
 
+### Установка рядом с существующим сайтом
+
+Если порты 80/443 уже заняты вашим nginx, установите панель только на loopback:
+
+```bash
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh -o /tmp/gokaskad-install.sh
+sudo env MANAGEMENT_BIND=127.0.0.1 MANAGEMENT_PORT=10443 RESERVED_TCP_PORTS=80,443 bash /tmp/gokaskad-install.sh
+```
+
+Установщик спросит только пароль. Панель доступна локально на `https://127.0.0.1:10443`.
+Для доступа через домен настройте существующий reverse proxy и сертификат.
+Если proxy работает в Docker, подключите оба nginx к общей Docker-сети:
+`127.0.0.1` внутри контейнера относится к самому контейнеру.
+API и база остаются внутренними. TCP-порты 80/443 нельзя использовать в правилах
+перенаправления панели; настройки сохраняются в `.env` при обновлении.
+
 ### Как устроено
 
 - **nginx** — единственная внешняя точка входа: HTTPS и пароль.
@@ -116,6 +132,22 @@ An HTTPS certificate is generated automatically. It is self-signed: verify the
 fingerprint printed by the installer and trust the certificate.
 If your server has a firewall or security group, allow the selected panel port
 and the ports you want to forward.
+
+### Install alongside an existing website
+
+When your nginx already uses ports 80/443, bind the panel to loopback:
+
+```bash
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh -o /tmp/gokaskad-install.sh
+sudo env MANAGEMENT_BIND=127.0.0.1 MANAGEMENT_PORT=10443 RESERVED_TCP_PORTS=80,443 bash /tmp/gokaskad-install.sh
+```
+
+Only the password is requested. The panel listens locally at `https://127.0.0.1:10443`.
+Configure your existing reverse proxy and certificate for access through a domain.
+For a Docker proxy, connect both nginx containers to a shared Docker network:
+`127.0.0.1` inside a container refers to that container itself.
+The API and database stay internal. Panel forwarding rules cannot use TCP ports
+80/443. These settings persist in `.env` when updating.
 
 ### How it works
 
