@@ -2,16 +2,31 @@
 # Run on the Linux server that will forward traffic. Inputs are read from /dev/tty.
 set -Eeuo pipefail
 umask 077
+export -n ADMIN_PASSWORD
 [[ $EUID -eq 0 ]] || { echo 'Запустите установщик через sudo bash.' >&2; exit 1; }
 [[ $(uname -s) == Linux ]] || { echo 'Нужен Linux с Docker и iptables.' >&2; exit 1; }
 command -v apt-get >/dev/null || { echo 'Автоустановка поддерживает Debian и Ubuntu.' >&2; exit 1; }
 
+configure=false
+resume=false
+case ${1:-} in
+    '') ;;
+    --configure-domain) configure=true ;;
+    --resume-domain) configure=true; resume=true ;;
+    *) echo 'Usage: install.sh [--configure-domain|--resume-domain]' >&2; exit 2 ;;
+esac
 root=/opt/go-kaskad
 [[ ! -L $root ]] || { echo 'Каталог установки не должен быть симлинком.' >&2; exit 1; }
 install -d -m 700 "$root" "$root/config" "$root/config/tls" "$root/releases"
 exec 9>"$root/install.lock"
 flock -n 9 || { echo 'Установка/удаление уже выполняется.' >&2; exit 1; }
-[[ ! -e $root/current ]] || { echo "Установка уже существует: $root/current. Для обновления см. README." >&2; exit 1; }
+if ! $configure && [[ -e $root/current ]]; then
+    echo 'Установка уже существует. Обновление — см. README; подключение домена — install.sh --configure-domain.' >&2
+    exit 1
+fi
+if $configure; then
+    [[ -f $root/current/.env ]] || { echo 'Сначала установите Gokaskad.' >&2; exit 1; }
+fi
 [[ ! -L /etc/sysctl.d/90-gokaskad.conf ]] || { echo 'Не заменяю симлинк /etc/sysctl.d/90-gokaskad.conf.' >&2; exit 1; }
 state="$root/install-state"
 install -d -m 700 "$state"
@@ -24,17 +39,113 @@ if [[ ! -f $state/packages.before ]]; then
     fi
 fi
 
-if [[ -z ${ADMIN_PASSWORD:-} ]]; then
-    read -r -s -p 'Пароль администратора (не менее 12 символов): ' ADMIN_PASSWORD </dev/tty
-    echo >/dev/tty
+work=$(mktemp -d)
+cleanup() {
+    result=$?
+    set +e
+    # Also record introduced dependencies if installation fails or is resumed.
+    dpkg-query -W -f='${binary:Package}\t${db:Status-Status}\n' | awk '$2=="installed" {print $1}' | sort -u >"$state/packages.after"
+    comm -13 "$work/packages.run.before" "$state/packages.after" >"$work/new-packages"
+    touch "$state/new-packages"
+    cat "$work/new-packages" "$state/new-packages" | sort -u >"$work/all-new-packages"
+    cp "$work/all-new-packages" "$state/new-packages"
+    rm -rf "$work"
+    exit "$result"
+}
+trap cleanup EXIT
+dpkg-query -W -f='${binary:Package}\t${db:Status-Status}\n' | awk '$2=="installed" {print $1}' | sort -u >"$work/packages.run.before"
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y --no-install-recommends ca-certificates curl openssl iproute2 iptables apache2-utils util-linux python3
+if ! command -v docker >/dev/null; then
+    apt-get install -y --no-install-recommends docker.io
+    systemctl enable --now docker
 fi
-[[ ${#ADMIN_PASSWORD} -ge 12 && $ADMIN_PASSWORD != *$'\n'* && $ADMIN_PASSWORD != *$'\r'* ]] || {
-    echo 'Пароль должен содержать не менее 12 символов без переводов строк.' >&2; exit 1;
+if ! docker compose version >/dev/null 2>&1; then
+    if apt-cache show docker-compose-v2 >/dev/null 2>&1; then
+        apt-get install -y docker-compose-v2
+    else
+        apt-get install -y docker-compose
+    fi
+fi
+docker compose version >/dev/null || { echo 'Нужен Docker Compose v2.' >&2; exit 1; }
+docker info >/dev/null
+curl --fail --show-error --silent --location --proto '=https' --tlsv1.2 \
+    https://codeload.github.com/naum-mm/go-kaskad/tar.gz/refs/heads/main -o "$work/source.tar.gz"
+mkdir "$work/source"
+tar -xzf "$work/source.tar.gz" --strip-components=1 -C "$work/source"
+[[ -f $work/source/compose.yaml && -f $work/source/web/worker/firewall.py ]] || {
+    echo 'В main отсутствует веб-версия. Сначала опубликуйте изменения в GitHub.' >&2; exit 1;
 }
-(( $(printf '%s' "$ADMIN_PASSWORD" | wc -c) <= 72 )) || {
-    echo 'Пароль bcrypt должен занимать не более 72 байт.' >&2; exit 1;
-}
-export -n ADMIN_PASSWORD
+source_helper="$work/source/tools/proxy_setup.py"
+[[ -f $source_helper ]] || { echo 'В main отсутствует установщик домена.' >&2; exit 1; }
+install -m 600 "$source_helper" "$root/config/proxy_setup.py"
+helper="$root/config/proxy_setup.py"
+mode=${INSTALL_MODE:-auto}
+case $mode in auto|standalone|proxy) ;; *) echo 'INSTALL_MODE: auto, standalone или proxy.' >&2; exit 1 ;; esac
+if $resume; then
+    [[ -f $root/config/proxy.json ]] || { echo 'Нет незавершённой настройки домена.' >&2; exit 1; }
+    python3 "$helper" resume
+    exit
+fi
+if [[ $mode == auto && ${MANAGEMENT_BIND:-} == 127.0.0.1 && -n ${MANAGEMENT_PORT:-} ]] && ! $configure; then
+    # Preserve the explicit manual reverse-proxy installation command.
+    mode=standalone
+fi
+if [[ $mode != standalone ]]; then
+    detected=$(python3 "$helper" discover --plan "$work/proxy-plan.json")
+    if [[ $detected != standalone ]]; then
+        mode=proxy
+    elif [[ $mode == proxy ]] || $configure; then
+        echo 'Не найден существующий nginx на TCP 80/443.' >&2; exit 1
+    else
+        mode=standalone
+    fi
+fi
+if $configure && [[ $mode != proxy ]]; then
+    echo '--configure-domain требует существующий nginx на TCP 80/443.' >&2; exit 1
+fi
+if [[ $mode == proxy ]]; then
+    echo 'Обнаружен существующий nginx. Панель будет доступна по домену через HTTPS 443.'
+    if [[ -z ${PANEL_DOMAIN:-} ]]; then
+        read -r -p 'Домен панели (DNS уже должен указывать на этот сервер): ' PANEL_DOMAIN </dev/tty
+    fi
+    PANEL_DOMAIN=$(python3 "$helper" domain --domain "$PANEL_DOMAIN")
+    MANAGEMENT_BIND=127.0.0.1
+    RESERVED_TCP_PORTS="80,443${RESERVED_TCP_PORTS:+,$RESERVED_TCP_PORTS}"
+    if $configure; then
+        MANAGEMENT_PORT=$(awk -F= '$1=="MANAGEMENT_PORT" {print $2}' "$root/current/.env")
+    elif [[ -z ${MANAGEMENT_PORT:-} ]]; then
+        for candidate in $(seq 10443 10542); do
+            if [[ -z $(ss -H -ltn "sport = :$candidate") ]]; then
+                MANAGEMENT_PORT=$candidate
+                break
+            fi
+        done
+        [[ -n ${MANAGEMENT_PORT:-} ]] || { echo 'Нет свободного локального порта панели.' >&2; exit 1; }
+    fi
+    if ! command -v certbot >/dev/null; then
+        if [[ -x /snap/bin/certbot ]]; then
+            export PATH="$PATH:/snap/bin"
+        else
+            apt-get install -y --no-install-recommends certbot
+        fi
+    fi
+fi
+if ! $configure; then
+    if [[ -z ${ADMIN_PASSWORD:-} ]]; then
+        read -r -s -p 'Пароль администратора (не менее 12 символов): ' ADMIN_PASSWORD </dev/tty
+        echo >/dev/tty
+    fi
+    [[ ${#ADMIN_PASSWORD} -ge 12 && $ADMIN_PASSWORD != *$'\n'* && $ADMIN_PASSWORD != *$'\r'* ]] || {
+        echo 'Пароль должен содержать не менее 12 символов без переводов строк.' >&2; exit 1;
+    }
+    (( $(printf '%s' "$ADMIN_PASSWORD" | wc -c) <= 72 )) || {
+        echo 'Пароль bcrypt должен занимать не более 72 байт.' >&2; exit 1;
+    }
+    export -n ADMIN_PASSWORD
+fi
 if [[ -z ${MANAGEMENT_PORT:-} ]]; then
     read -r -p 'HTTPS-порт панели [8443]: ' MANAGEMENT_PORT </dev/tty
     MANAGEMENT_PORT=${MANAGEMENT_PORT:-8443}
@@ -61,39 +172,38 @@ if [[ -n $RESERVED_TCP_PORTS ]]; then
     done
 fi
 
-export DEBIAN_FRONTEND=noninteractive
-apt-get update
-apt-get install -y --no-install-recommends ca-certificates curl openssl iproute2 iptables apache2-utils util-linux
-if ! command -v docker >/dev/null; then
-    apt-get install -y --no-install-recommends docker.io
-    systemctl enable --now docker
+if $configure; then
+    grep -q RESERVED_TCP_PORTS "$root/current/compose.yaml" || {
+        echo 'Сначала обновите Gokaskad по инструкции README.' >&2; exit 1;
+    }
+    cd "$root/current"
+    docker compose exec -T worker bash /app/gokaskad.sh --machine list >"$work/rules.json"
+    python3 - "$work/rules.json" <<'CHECK'
+import json, sys
+rules = json.load(open(sys.argv[1]))['rules']
+if any(r['protocol'] == 'tcp' and r['input_port'] in (80, 443) and r['enabled'] for r in rules):
+    sys.exit('Сначала отключите правила перенаправления TCP 80/443 в панели.')
+CHECK
+    cp -p .env "$root/config/env.before-domain"
+    python3 - <<'ENV'
+from pathlib import Path
+p = Path('.env')
+lines = p.read_text().splitlines()
+values = dict(line.split('=', 1) for line in lines if '=' in line and not line.startswith('#'))
+reserved = sorted((set(values.get('RESERVED_TCP_PORTS', '').split(',')) | {'80', '443'}) - {''})
+lines = [line for line in lines if not line.startswith(('MANAGEMENT_BIND=', 'RESERVED_TCP_PORTS='))]
+p.write_text('\n'.join(lines) + '\nMANAGEMENT_BIND=127.0.0.1\nRESERVED_TCP_PORTS=' + ','.join(reserved) + '\n')
+ENV
+    docker compose up -d --wait --wait-timeout 180
+    python3 "$helper" setup --plan "$work/proxy-plan.json" --domain "$PANEL_DOMAIN" --port "$MANAGEMENT_PORT"
+    exit
 fi
-if ! docker compose version >/dev/null 2>&1; then
-    if apt-cache show docker-compose-v2 >/dev/null 2>&1; then
-        apt-get install -y docker-compose-v2
-    else
-        apt-get install -y docker-compose
-    fi
+if [[ -z $(ss -H -ltn "sport = :$MANAGEMENT_PORT") ]]; then :; else
+    echo "Порт $MANAGEMENT_PORT уже занят." >&2; exit 1
 fi
-docker compose version >/dev/null || { echo 'Нужен Docker Compose v2.' >&2; exit 1; }
-docker info >/dev/null
-dpkg-query -W -f='${binary:Package}\t${db:Status-Status}\n' | awk '$2=="installed" {print $1}' | sort -u >"$state/packages.after"
-comm -13 "$state/packages.before" "$state/packages.after" >"$state/new-packages"
 if [[ ! -f $state/images.before ]]; then
     docker image ls -aq --no-trunc | sort -u >"$state/images.before"
 fi
-if ss -H -ltn "sport = :$MANAGEMENT_PORT" | grep -q .; then
-    echo "Порт $MANAGEMENT_PORT уже занят." >&2; exit 1
-fi
-work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT
-curl --fail --show-error --silent --location --proto '=https' --tlsv1.2 \
-    https://codeload.github.com/naum-mm/go-kaskad/tar.gz/refs/heads/main -o "$work/source.tar.gz"
-mkdir "$work/source"
-tar -xzf "$work/source.tar.gz" --strip-components=1 -C "$work/source"
-[[ -f $work/source/compose.yaml && -f $work/source/web/worker/firewall.py ]] || {
-    echo 'В main отсутствует веб-версия. Сначала опубликуйте изменения в GitHub.' >&2; exit 1;
-}
 release="$root/releases/$(date -u +%Y%m%dT%H%M%SZ)"
 mv "$work/source" "$release"
 printf '%s\n' "$ADMIN_PASSWORD" | htpasswd -niBC 10 admin >"$root/config/admin.htpasswd"
@@ -123,8 +233,15 @@ comm -13 "$state/images.before" "$state/images.after" >"$state/new-images"
 }
 curl --fail --silent --show-error --cacert "$root/config/tls/server.crt" \
     --header "@$work/auth.header" "https://localhost:$MANAGEMENT_PORT/api/health" | grep -q '"ready": true'
-rm -f "$work/auth.header"
 ln -s "$release" "$root/current"
+if [[ $mode == proxy ]]; then
+    if ! python3 "$helper" setup --plan "$work/proxy-plan.json" --domain "$PANEL_DOMAIN" --port "$MANAGEMENT_PORT" --auth-file "$work/auth.header"; then
+        echo 'Панель установлена локально. Для продолжения выполните установщик с --resume-domain; пароль и БД сохранены.' >&2
+        exit 1
+    fi
+    exit
+fi
+rm -f "$work/auth.header"
 echo
 if [[ $MANAGEMENT_BIND == 127.0.0.1 ]]; then
     echo "Готово. Панель доступна только локально: https://127.0.0.1:$MANAGEMENT_PORT, пользователь: admin."

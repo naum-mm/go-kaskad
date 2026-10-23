@@ -16,6 +16,7 @@ jobs:
           python3 -m unittest discover -s tests -v
           bash -n install.sh gokaskad.sh
           bash -n uninstall.sh
+          python3 -m py_compile tools/proxy_setup.py
           sh -n gokaskad-openbsd.sh
           node --check web/gui/app.js
           python3 tools/build_preview.py
@@ -25,6 +26,11 @@ jobs:
           docker run --rm --network none --read-only --tmpfs /tmp:exec --tmpfs /opt --tmpfs /etc/sysctl.d \
             -e GOKASKAD_UNINSTALL_TEST_CONTAINER=1 -v "$PWD:/src:ro" \
             python:3.13-slim-bookworm python3 /src/tests/uninstall_smoke.py
+      - name: Installer recovery and integration cleanup in disposable filesystem
+        run: |
+          docker run --rm --network none --read-only --tmpfs /tmp:exec --tmpfs /opt --tmpfs /etc/sysctl.d --tmpfs /etc/letsencrypt \
+            -e GOKASKAD_INSTALL_TEST_CONTAINER=1 -v "$PWD:/src:ro" \
+            python:3.13-slim-bookworm python3 /src/tests/install_smoke.py
       - name: Prepare test-only credentials and certificate
         run: |
           sudo apt-get update
@@ -38,6 +44,8 @@ jobs:
           echo "SMOKE_CA=$PWD/.local/config/tls/server.crt" >> "$GITHUB_ENV"
       - name: Build and start isolated stack
         run: docker compose -p gokaskad-test -f compose.yaml -f tests/compose.smoke.yaml up -d --build --wait --wait-timeout 180
+      - name: Existing nginx SNI, verified TLS, certificate rotation and cleanup
+        run: python3 tests/proxy_smoke.py
       - name: Real TCP/UDP, authentication, persistence and isolation
         run: python3 -u tests/docker_smoke.py
       - name: Logs

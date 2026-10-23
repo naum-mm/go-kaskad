@@ -23,6 +23,10 @@ if $purge && [[ ! -f $state/new-packages ]]; then
     exit 1
 fi
 cd "$release"
+# Detach our domain before stopping the panel. Existing sites, hooks and networks stay.
+if [[ -f $root/config/proxy.json ]]; then
+    python3 "$root/config/proxy_setup.py" remove
+fi
 # Stop all writers before detaching rules or deleting the database.
 docker compose stop
 backend=$(awk -F= '$1=="IPTABLES_BACKEND" {print $2}' .env)
@@ -67,6 +71,10 @@ if $purge; then
           -n $(docker network ls --filter type=custom -q) ]]; then
         echo 'Остались другие ресурсы Docker. Пакеты и install-state сохранены.' >&2
         echo 'Удалите общие пакеты вручную после проверки; не удаляйте /var/lib/docker вслепую.' >&2
+        exit 1
+    fi
+    if compgen -G '/etc/letsencrypt/renewal/*.conf' >/dev/null; then
+        echo 'Остались другие сертификаты Let’s Encrypt. Пакеты и install-state сохранены для их продления.' >&2
         exit 1
     fi
     mapfile -t packages <"$state/new-packages"

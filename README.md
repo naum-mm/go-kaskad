@@ -24,32 +24,33 @@ Docker Compose, если их ещё нет.
 curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh | sudo bash
 ```
 
-Установщик спросит только:
+Установщик сам определяет окружение и задаёт **два вопроса**:
 
-1. **Пароль администратора** — от 12 символов, до 72 байт.
-2. **Порт панели** — по умолчанию `8443`.
+- **На свободном сервере:** пароль администратора и порт панели (по умолчанию `8443`).
+- **Если HTTPS уже обслуживает nginx:** домен панели и пароль администратора.
 
-Откройте `https://IP-сервера:ПОРТ`. Логин: **`admin`**.
-HTTPS-сертификат создаётся автоматически. Он самоподписанный: сверьте выведенный
-установщиком отпечаток и добавьте сертификат в доверенные.
-Если у сервера есть firewall или security group, разрешите выбранный порт панели
-и порты, которые хотите перенаправлять.
+Пароль — от 12 символов, до 72 байт. Логин: **`admin`**.
+На свободном сервере откройте `https://IP-сервера:ПОРТ`; установщик выведет отпечаток
+самоподписанного сертификата. Разрешите выбранный порт в firewall провайдера.
 
 ### Установка рядом с существующим сайтом
 
-Если порты 80/443 уже заняты вашим nginx, установите панель только на loopback:
+Используйте **ту же команду установки**. Сначала направьте DNS домена панели
+на этот VPS. Порты 80/443 должны быть доступны для проверки Let’s Encrypt.
 
-```bash
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh -o /tmp/gokaskad-install.sh
-sudo env MANAGEMENT_BIND=127.0.0.1 MANAGEMENT_PORT=10443 RESERVED_TCP_PORTS=80,443 bash /tmp/gokaskad-install.sh
-```
+Установщик добавит домен в существующий nginx, выпустит сертификат через Certbot
+на хосте и настроит продление. Nginx выберет сертификат по **SNI** и направит запрос
+в блок нужного домена. Сайты продолжат работать на своих доменах.
 
-Установщик спросит только пароль. Панель доступна локально на `https://127.0.0.1:10443`.
-Для доступа через домен настройте существующий reverse proxy и сертификат.
-Если proxy работает в Docker, подключите оба nginx к общей Docker-сети:
-`127.0.0.1` внутри контейнера относится к самому контейнеру.
-API и база остаются внутренними. TCP-порты 80/443 нельзя использовать в правилах
-перенаправления панели; настройки сохраняются в `.env` при обновлении.
+Панель привязывается к loopback; для nginx в Docker автоматически подключается
+общая сеть. API и база остаются внутренними. TCP-порты 80/443 зарезервированы:
+создать перенаправление на них в панели нельзя. Настройки сохраняются при обновлении.
+
+Поддерживаются nginx на хосте и Docker nginx с доступными через bind mount
+конфигурацией, ACME webroot и `/etc/letsencrypt`. Для неизвестной конфигурации
+установщик остановится с объяснением. Отдельный HAProxy для панели не требуется.
+
+[Подробности, продолжение после ошибки и ручной режим](docs/web.ru.md#домен-в-существующем-nginx)
 
 ### Как устроено
 
@@ -83,7 +84,10 @@ curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/
 
 Скрипт остановит контейнеры и удалит их вместе с volume базы, сетями, образами
 приложения, цепочками `GK_*`, настройкой Gokaskad в sysctl и каталогом
-`/opt/go-kaskad`. Общие пакеты системы и Docker останутся.
+`/opt/go-kaskad`. При автоматическом подключении домена также удаляются свой блок
+nginx и hook продления. Созданный установщиком сертификат удаляется, если его не
+используют другие блоки nginx. Общие сети, таймер Certbot и чужие настройки сохраняются.
+Общие пакеты системы и Docker останутся.
 
 Для новой установки, которая сохранила список добавленных пакетов, вместо
 обычного удаления можно выбрать полную очистку:
@@ -122,32 +126,33 @@ Docker Compose if they are missing.
 curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh | sudo bash
 ```
 
-The installer asks for just:
+The installer detects the environment and asks **two questions**:
 
-1. **Admin password** — at least 12 characters, up to 72 bytes.
-2. **Panel port** — `8443` by default.
+- **A standalone server:** administrator password and panel port (default `8443`).
+- **An existing nginx on HTTPS:** panel domain and administrator password.
 
-Open `https://SERVER-IP:PORT`. Username: **`admin`**.
-An HTTPS certificate is generated automatically. It is self-signed: verify the
-fingerprint printed by the installer and trust the certificate.
-If your server has a firewall or security group, allow the selected panel port
-and the ports you want to forward.
+Passwords must be at least 12 characters and at most 72 bytes. Username: **`admin`**.
+For a standalone installation, open `https://SERVER-IP:PORT`, verify the printed
+self-signed certificate fingerprint, and allow the panel port in your provider firewall.
 
 ### Install alongside an existing website
 
-When your nginx already uses ports 80/443, bind the panel to loopback:
+Use **the same installation command**. Point the panel domain's DNS to this VPS
+first. Ports 80/443 must be reachable for Let’s Encrypt validation.
 
-```bash
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh -o /tmp/gokaskad-install.sh
-sudo env MANAGEMENT_BIND=127.0.0.1 MANAGEMENT_PORT=10443 RESERVED_TCP_PORTS=80,443 bash /tmp/gokaskad-install.sh
-```
+The installer adds the domain to your existing nginx, obtains a certificate using
+Certbot on the host, and sets up renewal. Nginx uses **SNI** to select the certificate
+and routes requests to the matching domain. Existing sites keep their domains.
 
-Only the password is requested. The panel listens locally at `https://127.0.0.1:10443`.
-Configure your existing reverse proxy and certificate for access through a domain.
-For a Docker proxy, connect both nginx containers to a shared Docker network:
-`127.0.0.1` inside a container refers to that container itself.
-The API and database stay internal. Panel forwarding rules cannot use TCP ports
-80/443. These settings persist in `.env` when updating.
+The panel binds to loopback. For Docker nginx, a shared network is configured
+automatically. The API and database stay internal. TCP ports 80/443 are reserved
+and cannot be used by panel forwarding rules. Settings persist when updating.
+
+Supported: host nginx, or Docker nginx with bind-mounted configuration, ACME
+webroot and `/etc/letsencrypt`. Unrecognized configurations stop with an explanation.
+A separate HAProxy is not needed for the panel.
+
+[Domain setup, recovery and manual mode](docs/proxy.en.md)
 
 ### How it works
 
@@ -180,7 +185,9 @@ curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/
 
 Removes containers, the database volume, project networks and application images,
 `GK_*` firewall chains, the project's sysctl setting, and `/opt/go-kaskad`.
-Shared system packages and Docker remain installed.
+Automatic domain integration also removes its nginx block and renewal hook.
+An installer-created certificate is deleted if no other nginx block references it.
+Shared networks, the Certbot timer, other sites and system packages remain.
 
 For a new installation with a saved package manifest, choose this instead to
 also remove packages introduced by the installer:
