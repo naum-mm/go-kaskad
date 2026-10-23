@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Machine interface used by the web worker; does not run interactive preparation.
+if [[ "${1:-}" == "--machine" ]]; then
+    shift
+    exec python3 "$(dirname "$(readlink -f "$0")")/web/worker/firewall.py" "$@"
+fi
+
 # --- COLORS ---
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -710,6 +716,7 @@ case "$1" in
         echo "  --save       Save current rules to config"
         echo "  --flush      Flush all iptables rules"
         echo "  --help       Show this help message"
+        echo "  --machine    JSON worker interface (list, put, delete, reconcile)"
         echo ""
         echo "Without options - interactive menu"
         exit 0

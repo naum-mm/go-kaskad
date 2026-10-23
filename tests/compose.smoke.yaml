@@ -1,0 +1,7 @@
+# Use only for tests: isolate firewall mutations from the host namespace.
+services:
+  worker:
+    network_mode: bridge
+  nginx:
+    ports: !override
+      - "127.0.0.1:${MANAGEMENT_PORT}:443"

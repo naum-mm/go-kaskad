@@ -1,0 +1,40 @@
+name: Web stack
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      MANAGEMENT_PORT: "18443"
+      SMOKE_PASSWORD: development-password
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit and syntax checks
+        run: |
+          python3 -m unittest discover -s tests -v
+          bash -n install.sh gokaskad.sh
+          sh -n gokaskad-openbsd.sh
+          node --check web/gui/app.js
+      - name: Prepare test-only credentials and certificate
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apache2-utils
+          mkdir -p .local/config/tls
+          printf '%s\n' "$SMOKE_PASSWORD" | htpasswd -niBC 10 admin > .local/config/admin.htpasswd
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=localhost \
+            -addext subjectAltName=DNS:localhost,IP:127.0.0.1 \
+            -keyout .local/config/tls/server.key -out .local/config/tls/server.crt
+          echo "CONFIG_DIR=$PWD/.local/config" >> "$GITHUB_ENV"
+          echo "SMOKE_CA=$PWD/.local/config/tls/server.crt" >> "$GITHUB_ENV"
+      - name: Build and start isolated stack
+        run: docker compose -p gokaskad-test -f compose.yaml -f tests/compose.smoke.yaml up -d --build --wait --wait-timeout 180
+      - name: Real TCP/UDP, authentication, persistence and isolation
+        run: python3 -u tests/docker_smoke.py
+      - name: Logs
+        if: failure()
+        run: docker compose -p gokaskad-test -f compose.yaml -f tests/compose.smoke.yaml logs --tail=150
+      - name: Cleanup test stack
+        if: always()
+        run: docker compose -p gokaskad-test -f compose.yaml -f tests/compose.smoke.yaml down -v
