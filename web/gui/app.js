@@ -23,9 +23,6 @@ function notice(text, error = false) {
 
 function render(data) {
   rules = data.rules;
-  $('total').textContent = rules.length;
-  $('active').textContent = rules.filter(r => r.enabled).length;
-  $('protocols').textContent = [...new Set(rules.map(r => r.protocol.toUpperCase()))].join(' / ') || '—';
   $('count').textContent = rules.length;
   $('connection').textContent = '● Worker подключён';
   $('connection').className = 'badge online';
