@@ -86,6 +86,34 @@ sudo docker compose restart worker
 и после проверки переключите симлинк `current`. Compose project name и volumes
 остаются прежними; заранее сделайте резервную копию. Сертификаты обновляются отдельно.
 
+### Полное обновление
+
+Для блока «Системный firewall» нужно обновить **GUI, API и worker**: замены только
+HTML/CSS недостаточно. Существующий пароль, порт, сертификат и volume БД используются
+повторно. Полное обновление из `main` на сервере:
+
+```bash
+sudo bash <<'UPDATE'
+set -euo pipefail
+root=/opt/go-kaskad
+test -f "$root/current/.env"
+release=$(mktemp -d "$root/releases/update.XXXXXX")
+curl --proto '=https' --tlsv1.2 -fsSL https://codeload.github.com/naum-mm/go-kaskad/tar.gz/refs/heads/main |
+  tar -xz --strip-components=1 -C "$release"
+cp -p "$root/current/.env" "$release/.env"
+cd "$release"
+docker compose config --quiet
+docker compose up -d --build --wait --wait-timeout 180
+docker compose exec -T nginx nginx -t
+ln -sfn "$release" "$root/current"
+UPDATE
+```
+
+Системный firewall показывается отдельно и только для чтения: iptables-nft,
+iptables-legacy, IPv4/IPv6 и отдельные цепочки nftables, включая fail2ban. Наборы
+адресов nftables раскрываются в таблице; при ошибке чтения видна отметка неполного
+обзора. Это снимок правил ядра, а не статус процесса fail2ban или список его настроек.
+
 ### JSON CLI для worker
 
 Интерактивный CLI продолжает работать. Дополнительный машинный режим используется
@@ -99,6 +127,8 @@ printf '%s\n' '{"id":"b29bc2cf-47c6-43bc-8e49-5d560378fe66","name":"web","protoc
 
 Ответы — JSON; код 0 означает успех, 2 — неверный запрос, 1 — ошибку firewall/БД.
 `delete` принимает `{"id":"UUID"}`, `reconcile` восстанавливает правила из БД.
+`firewall` возвращает системные цепочки и правила, ничего не изменяя; API использует
+для него только `GET /api/firewall`.
 
 ### Разработка и проверки
 

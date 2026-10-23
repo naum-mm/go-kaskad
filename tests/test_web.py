@@ -115,6 +115,14 @@ class APITests(unittest.TestCase):
             self.assertEqual(self.request("DELETE", path, headers=headers)[0], 403)
         self.rpc.assert_not_called()
 
+    def test_system_firewall_is_read_only(self):
+        self.rpc.return_value = (200, {"chains": [], "warnings": [], "sources": []})
+        self.assertEqual(self.request("GET", "/api/firewall")[0], 200)
+        self.rpc.assert_called_once_with("firewall")
+        self.rpc.reset_mock()
+        self.assertEqual(self.request("DELETE", "/api/firewall", headers={"X-Gokaskad": "1"})[0], 404)
+        self.rpc.assert_not_called()
+
     def test_invalid_json_and_ids_never_reach_worker(self):
         headers = {"X-Gokaskad": "1", "Content-Type": "application/json"}
         self.assertEqual(self.request("PUT", "/api/rules/" + str(uuid.uuid4()), "[]", headers)[0], 400)

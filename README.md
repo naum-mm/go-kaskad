@@ -10,6 +10,11 @@
 `192.0.2.10:80`. Правила можно создавать, изменять, включать, выключать и удалять
 в браузере. Они сохраняются и восстанавливаются после перезапуска.
 
+Под правилами перенаправления показан **системный firewall**: отдельная серая
+таблица только для просмотра. Видны цепочки, политики, адреса, порты и действия,
+включая fail2ban в iptables и nftables для IPv4/IPv6. Есть поиск и фильтр fail2ban.
+Если часть правил недоступна, панель предупреждает о неполном обзоре.
+
 ### Установка одной командой
 
 Нужен сервер с Debian/Ubuntu и root-доступом. Установщик установит Docker и
@@ -86,6 +91,11 @@ curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/
 For example, a connection to port `8080` on your server is forwarded to
 `192.0.2.10:80`. Create, edit, enable, disable, and delete rules in your browser.
 Rules are saved and restored after a restart.
+
+A separate **system firewall** table appears below forwarding rules. It uses
+muted gray text and is read-only. View chains, policies, addresses, ports and
+actions, including fail2ban in iptables and nftables for IPv4/IPv6. Search and a
+fail2ban filter are included. A warning appears if some rules cannot be read.
 
 ### One-command installation
 

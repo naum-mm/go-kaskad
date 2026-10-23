@@ -39,6 +39,26 @@
       </div>
       <div class="panel-foot">Изменения применяются сразу. Порт панели зарезервирован.</div>
     </section>
+
+    <section class="rules-panel firewall-panel" aria-labelledby="firewall-title">
+      <div class="panel-head">
+        <div><h2 id="firewall-title">Системный firewall <span class="readonly-badge">Только просмотр</span></h2><p class="firewall-caption">Текущие правила сервера, включая цепочки fail2ban.</p></div>
+        <button id="firewall-refresh" class="secondary">↻ Обновить</button>
+      </div>
+      <div class="firewall-tools">
+        <input id="firewall-search" type="search" aria-label="Поиск в системном firewall" placeholder="Цепочка, адрес или порт">
+        <label class="firewall-filter"><input id="firewall-fail2ban" type="checkbox"> Только fail2ban</label>
+      </div>
+      <p id="firewall-state" class="firewall-state" role="status">Загрузка правил…</p>
+      <div id="firewall-warnings" class="firewall-warnings" role="status" hidden></div>
+      <div class="table-wrap firewall-view">
+        <table aria-label="Текущие правила системного firewall">
+          <thead><tr><th>№</th><th>ПРОТОКОЛ</th><th>ИСТОЧНИК</th><th>НАЗНАЧЕНИЕ</th><th>ПОРТЫ<br>ИСТ. → НАЗН.</th><th>ДЕЙСТВИЕ</th><th>УСЛОВИЯ</th></tr></thead>
+          <tbody id="firewall-rules"></tbody>
+        </table>
+      </div>
+      <div class="panel-foot">Эти правила действуют на сервере. Изменять их в этой таблице нельзя.</div>
+    </section>
   </main>
 
   <dialog id="editor">

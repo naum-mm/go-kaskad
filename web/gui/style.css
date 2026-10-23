@@ -140,3 +140,48 @@ input:focus, select:focus { outline: 2px solid var(--blue-light); border-color: 
   .panel-foot { font-size: 10px; padding-inline: 14px; line-height: 1.6; }
   .demo-note { margin-top: 16px; font-size: 10px; }
 }
+
+/* Host firewall rules are active on the server; this neutral view is read-only. */
+.firewall-panel { color: #68696f; border-color: #dededb; background: #fdfdfb; }
+.firewall-panel h2 { color: #606168; }
+.firewall-caption { margin: 9px 0 0; color: #73747a; font-size: 12px; line-height: 1.6; }
+.firewall-panel .secondary { color: #68696f; border-color: #dcdcd7; }
+.firewall-panel .secondary:hover { background: #eeefec; }
+.readonly-badge { display: inline-block; margin-left: 10px; border: 1px solid #d9dad5; border-radius: 5px; padding: 4px 7px; font-size: 10px; font-weight: 500; color: #73747a; vertical-align: middle; }
+.firewall-panel .readonly-badge { color: #73747a; background: #f1f2ee; }
+.firewall-panel .panel-head > div { min-width: 0; }
+.firewall-panel .panel-head > button { flex-shrink: 0; white-space: nowrap; }
+.firewall-tools { display: flex; gap: 22px; align-items: center; padding: 0 26px 8px; }
+.firewall-tools input[type="search"] { max-width: 340px; color: #62636a; border-color: #dcdcd7; background: #fdfdfb; }
+.firewall-filter { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; color: #68696f; white-space: nowrap; }
+.firewall-filter input { width: auto; accent-color: #77787d; }
+.firewall-state { margin: 8px 26px 16px; color: #74757a; font-size: 11px; line-height: 1.6; }
+.firewall-warnings { margin: 0 26px 16px; padding: 11px 14px; border: 1px solid #dcdcd7; border-radius: 6px; color: #68696f; font-size: 12px; line-height: 1.6; }
+.firewall-view { max-height: 620px; border-top: 1px solid #dededb; }
+.firewall-view table { min-width: 1050px; table-layout: fixed; white-space: normal; }
+.firewall-view th { background: #f1f2ee; color: #68696f; border-color: #dededb; position: sticky; top: 0; z-index: 1; line-height: 1.6; }
+.firewall-view th:first-child { width: 44px; }
+.firewall-view th:nth-child(2) { width: 95px; }
+.firewall-view th:nth-child(5) { width: 140px; }
+.firewall-view td { padding: 15px 14px; color: #68696f; border-color: #e7e7e2; vertical-align: top; line-height: 1.65; overflow-wrap: anywhere; font-size: 11px; }
+.firewall-view .firewall-chain td { background: #f3f4f0; border-block: 1px solid #dededb; padding: 13px 16px; }
+.firewall-chain strong { color: #56575e; font-size: 12px; }
+.firewall-chain span { font-size: 10px; color: #74757a; }
+.firewall-tag { display: inline-block; border: 1px solid #c9cbc4; border-radius: 4px; padding: 0 5px; margin-left: 10px; }
+.firewall-policy { margin-left: 16px; }
+.firewall-view .firewall-no-rules { color: #74757a; font-style: italic; }
+.firewall-view ul { list-style: none; margin: 0; padding: 0; }
+.firewall-view li + li { margin-top: 4px; }
+.firewall-address, .firewall-ports { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.firewall-address details { margin-top: 6px; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.firewall-address summary { cursor: pointer; color: #66676e; font-size: 10px; }
+.firewall-members { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow: auto; margin-top: 7px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.firewall-panel .panel-foot { background: #f6f7f3; color: #74757a; border-color: #dededb; }
+@media (max-width: 600px) {
+  .firewall-panel .panel-head { align-items: flex-start; }
+  .readonly-badge { display: table; margin: 8px 0 0; }
+  .firewall-tools { padding-inline: 14px; flex-wrap: wrap; gap: 14px; }
+  .firewall-tools input[type="search"] { max-width: none; }
+  .firewall-state, .firewall-warnings { margin-inline: 14px; }
+  .firewall-caption { font-size: 11px; }
+}

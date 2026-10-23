@@ -32,7 +32,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if not 0 < size <= 16384 or self.path != "/rpc":
                 raise ValueError("Invalid RPC request")
             data = json.loads(self.rfile.read(size))
-            if data.get("command") not in ("list", "put", "delete"):
+            if data.get("command") not in ("list", "put", "delete", "firewall"):
                 raise ValueError("Invalid RPC command")
             status, result = cli(data["command"], data.get("payload"))
         except (ValueError, KeyError, TypeError):

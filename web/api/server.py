@@ -40,6 +40,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def handle_request(self):
         try:
+            if self.command == "GET" and self.path == "/api/firewall":
+                status, data = rpc("firewall")
+                self.reply(status, data)
+                return
             if self.command == "GET" and self.path in ("/api/health", "/api/rules"):
                 status, data = rpc("list")
                 self.reply(status, {"ready": status == 200} if self.path == "/api/health" else data)

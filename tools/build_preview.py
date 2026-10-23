@@ -1,5 +1,6 @@
 """Build a self-contained, clearly labelled demo from the actual GUI sources."""
 from pathlib import Path
+import json
 
 root = Path(__file__).resolve().parents[1]
 gui = root / "web/gui"
@@ -18,6 +19,7 @@ let demoRules = [
   {id:'b29bc2cf-47c6-43bc-8e49-5d560378fe67',name:'VPN · пример',protocol:'udp',input_port:51820,target_ip:'192.0.2.20',target_port:51820,enabled:false}
 ];
 async function request(path = '/api/rules', method = 'GET', body) {
+  if (path === '/api/firewall') return {...demoFirewall, updated_at: new Date().toISOString()};
   if (method === 'PUT') {
     if (demoRules.some(r => r.id !== body.id && r.enabled && body.enabled && r.protocol === body.protocol && r.input_port === body.input_port))
       throw new Error('Этот протокол и входящий порт уже используются.');
@@ -27,6 +29,7 @@ async function request(path = '/api/rules', method = 'GET', body) {
   return {rules: demoRules.map(r => ({...r}))};
 }
 '''
+adapter = 'const demoFirewall = ' + json.dumps(json.loads((root / 'tools/preview_firewall.json').read_text()), ensure_ascii=False) + ';\n' + adapter
 script = (script[:start] + adapter + script[end:]).replace('● Worker подключён', '● Демонстрация')
 script = script.replace('crypto.randomUUID()', 'demoUuid()')
 html = (gui / "index.html").read_text()

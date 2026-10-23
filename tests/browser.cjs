@@ -20,6 +20,13 @@ const assert = require('node:assert/strict');
   try {
     await page.goto(`https://localhost:${process.env.MANAGEMENT_PORT || 18443}`);
     await page.getByText('Worker подключён', {exact: false}).waitFor();
+    await page.locator('.firewall-chain').first().waitFor();
+    assert.equal(await page.locator('#firewall-rules button').count(), 0);
+    const allChains = await page.locator('.firewall-chain').count();
+    await page.getByRole('searchbox', {name: 'Поиск в системном firewall'}).fill('GK_DNAT');
+    await page.getByText('GK_DNAT', {exact: true}).waitFor();
+    assert(await page.locator('.firewall-chain').count() < allChains);
+    await page.getByRole('searchbox', {name: 'Поиск в системном firewall'}).fill('');
     await page.getByRole('button', {name: '＋ Новое правило'}).click();
     await page.getByLabel('Название', {exact: true}).fill('Browser smoke');
     await page.getByLabel('Входящий порт').fill('18082');

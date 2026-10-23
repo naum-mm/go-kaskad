@@ -49,6 +49,7 @@ def request(path="/api/rules", method="GET", data=None, auth=True, origin=None, 
 
 
 assert request(auth=False)[0] == 401
+assert request('/api/firewall', auth=False)[0] == 401
 plain = http.client.HTTPConnection("localhost", int(port), timeout=10)
 plain.request("GET", "/?from=http")
 redirect = plain.getresponse()
@@ -63,6 +64,47 @@ for name in ("api", "gui", "worker"):
     container = json.loads(docker("inspect", f"{project}-{name}-1"))[0]
     assert not container["HostConfig"]["PortBindings"], f"Unexpected published port on {name}"
 print("PASS: HTTP-to-HTTPS redirect preserves port/path, HTTPS, authentication, GUI, private service ports")
+
+# Both common fail2ban implementations, inside the isolated worker namespace.
+native_fixture = '''
+table inet f2b-gokaskad-smoke {
+ set addr-set-sshd {
+  type ipv4_addr
+  flags interval
+  elements = { 203.0.113.18, 198.51.100.0/24 }
+ }
+ chain f2b-chain {
+  type filter hook input priority -1; policy accept;
+  ip saddr @addr-set-sshd tcp dport 22 drop
+ }
+}
+'''
+try:
+    docker("exec", worker, "iptables-nft", "-N", "f2b-gokaskad-smoke")
+    docker("exec", worker, "iptables-nft", "-A", "INPUT", "-p", "tcp", "--dport", "2222", "-j", "f2b-gokaskad-smoke")
+    docker("exec", worker, "iptables-nft", "-A", "f2b-gokaskad-smoke", "-s", "203.0.113.19", "-j", "REJECT")
+    subprocess.run(["docker", "exec", "-i", worker, "nft", "-f", "-"], input=native_fixture, text=True, check=True)
+    before = '\n'.join(line for line in docker("exec", worker, "iptables-nft-save").splitlines() if not line.startswith('#'))
+    code, body = request('/api/firewall')
+    assert code == 200, body
+    view = json.loads(body)
+    classic = next(c for c in view['chains'] if c['name'] == 'f2b-gokaskad-smoke')
+    assert classic['fail2ban'] and classic['rules'][0]['source'] == '203.0.113.19/32'
+    native = next(c for c in view['chains'] if c['table'] == 'f2b-gokaskad-smoke' and c['name'] == 'f2b-chain')
+    assert native['backend'] == 'nftables' and native['fail2ban']
+    assert '203.0.113.18' in native['rules'][0]['source_members']
+    assert '198.51.100.0/24' in native['rules'][0]['source_members']
+    assert native['rules'][0]['destination_port'] == '22'
+    assert native['rules'][0]['action'] == 'DROP'
+    assert request('/api/firewall', 'DELETE')[0] == 404
+    after = '\n'.join(line for line in docker("exec", worker, "iptables-nft-save").splitlines() if not line.startswith('#'))
+    assert before == after, 'Read-only firewall endpoint modified rules'
+    print('PASS: live iptables and native nftables fail2ban chains, blocked-address sets, read-only endpoint')
+finally:
+    for args in (("iptables-nft", "-D", "INPUT", "-p", "tcp", "--dport", "2222", "-j", "f2b-gokaskad-smoke"),
+                 ("iptables-nft", "-F", "f2b-gokaskad-smoke"), ("iptables-nft", "-X", "f2b-gokaskad-smoke"),
+                 ("nft", "delete", "table", "inet", "f2b-gokaskad-smoke")):
+        subprocess.run(['docker', 'exec', worker, *args], capture_output=True, check=False)
 
 target_name = "gokaskad-smoke-target-" + uuid.uuid4().hex[:8]
 target_code = '''

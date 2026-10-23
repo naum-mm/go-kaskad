@@ -716,7 +716,7 @@ case "$1" in
         echo "  --save       Save current rules to config"
         echo "  --flush      Flush all iptables rules"
         echo "  --help       Show this help message"
-        echo "  --machine    JSON worker interface (list, put, delete, reconcile)"
+        echo "  --machine    JSON worker interface (list, put, delete, reconcile, firewall)"
         echo ""
         echo "Without options - interactive menu"
         exit 0

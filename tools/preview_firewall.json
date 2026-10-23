@@ -1,0 +1,87 @@
+{
+  "chains": [
+    {
+      "backend": "iptables-nft",
+      "family": "IPv4",
+      "table": "filter",
+      "name": "INPUT",
+      "policy": "DROP",
+      "fail2ban": false,
+      "rules": [
+        {
+          "protocol": "Любой",
+          "source": "Любой",
+          "destination": "Любой",
+          "source_port": "Любой",
+          "destination_port": "Любой",
+          "action": "ACCEPT",
+          "conditions": [
+            "Состояние: ESTABLISHED,RELATED"
+          ],
+          "source_members": [],
+          "destination_members": []
+        },
+        {
+          "protocol": "tcp",
+          "source": "Любой",
+          "destination": "Любой",
+          "source_port": "Любой",
+          "destination_port": "22",
+          "action": "f2b-sshd",
+          "conditions": [],
+          "source_members": [],
+          "destination_members": []
+        },
+        {
+          "protocol": "tcp",
+          "source": "Любой",
+          "destination": "Любой",
+          "source_port": "Любой",
+          "destination_port": "22,8443",
+          "action": "ACCEPT",
+          "conditions": [],
+          "source_members": [],
+          "destination_members": []
+        }
+      ]
+    },
+    {
+      "backend": "iptables-nft",
+      "family": "IPv4",
+      "table": "filter",
+      "name": "f2b-sshd",
+      "policy": null,
+      "fail2ban": true,
+      "rules": [
+        {
+          "protocol": "Любой",
+          "source": "203.0.113.18/32",
+          "destination": "Любой",
+          "source_port": "Любой",
+          "destination_port": "Любой",
+          "action": "REJECT",
+          "conditions": [
+            "Ответ: icmp-port-unreachable"
+          ],
+          "source_members": [],
+          "destination_members": []
+        },
+        {
+          "protocol": "Любой",
+          "source": "Любой",
+          "destination": "Любой",
+          "source_port": "Любой",
+          "destination_port": "Любой",
+          "action": "RETURN",
+          "conditions": [],
+          "source_members": [],
+          "destination_members": []
+        }
+      ]
+    }
+  ],
+  "warnings": [],
+  "sources": [
+    "IPv4 / nft"
+  ]
+}

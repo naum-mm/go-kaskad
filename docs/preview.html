@@ -146,6 +146,51 @@ input:focus, select:focus { outline: 2px solid var(--blue-light); border-color: 
   .panel-foot { font-size: 10px; padding-inline: 14px; line-height: 1.6; }
   .demo-note { margin-top: 16px; font-size: 10px; }
 }
+
+/* Host firewall rules are active on the server; this neutral view is read-only. */
+.firewall-panel { color: #68696f; border-color: #dededb; background: #fdfdfb; }
+.firewall-panel h2 { color: #606168; }
+.firewall-caption { margin: 9px 0 0; color: #73747a; font-size: 12px; line-height: 1.6; }
+.firewall-panel .secondary { color: #68696f; border-color: #dcdcd7; }
+.firewall-panel .secondary:hover { background: #eeefec; }
+.readonly-badge { display: inline-block; margin-left: 10px; border: 1px solid #d9dad5; border-radius: 5px; padding: 4px 7px; font-size: 10px; font-weight: 500; color: #73747a; vertical-align: middle; }
+.firewall-panel .readonly-badge { color: #73747a; background: #f1f2ee; }
+.firewall-panel .panel-head > div { min-width: 0; }
+.firewall-panel .panel-head > button { flex-shrink: 0; white-space: nowrap; }
+.firewall-tools { display: flex; gap: 22px; align-items: center; padding: 0 26px 8px; }
+.firewall-tools input[type="search"] { max-width: 340px; color: #62636a; border-color: #dcdcd7; background: #fdfdfb; }
+.firewall-filter { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; color: #68696f; white-space: nowrap; }
+.firewall-filter input { width: auto; accent-color: #77787d; }
+.firewall-state { margin: 8px 26px 16px; color: #74757a; font-size: 11px; line-height: 1.6; }
+.firewall-warnings { margin: 0 26px 16px; padding: 11px 14px; border: 1px solid #dcdcd7; border-radius: 6px; color: #68696f; font-size: 12px; line-height: 1.6; }
+.firewall-view { max-height: 620px; border-top: 1px solid #dededb; }
+.firewall-view table { min-width: 1050px; table-layout: fixed; white-space: normal; }
+.firewall-view th { background: #f1f2ee; color: #68696f; border-color: #dededb; position: sticky; top: 0; z-index: 1; line-height: 1.6; }
+.firewall-view th:first-child { width: 44px; }
+.firewall-view th:nth-child(2) { width: 95px; }
+.firewall-view th:nth-child(5) { width: 140px; }
+.firewall-view td { padding: 15px 14px; color: #68696f; border-color: #e7e7e2; vertical-align: top; line-height: 1.65; overflow-wrap: anywhere; font-size: 11px; }
+.firewall-view .firewall-chain td { background: #f3f4f0; border-block: 1px solid #dededb; padding: 13px 16px; }
+.firewall-chain strong { color: #56575e; font-size: 12px; }
+.firewall-chain span { font-size: 10px; color: #74757a; }
+.firewall-tag { display: inline-block; border: 1px solid #c9cbc4; border-radius: 4px; padding: 0 5px; margin-left: 10px; }
+.firewall-policy { margin-left: 16px; }
+.firewall-view .firewall-no-rules { color: #74757a; font-style: italic; }
+.firewall-view ul { list-style: none; margin: 0; padding: 0; }
+.firewall-view li + li { margin-top: 4px; }
+.firewall-address, .firewall-ports { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.firewall-address details { margin-top: 6px; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.firewall-address summary { cursor: pointer; color: #66676e; font-size: 10px; }
+.firewall-members { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow: auto; margin-top: 7px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.firewall-panel .panel-foot { background: #f6f7f3; color: #74757a; border-color: #dededb; }
+@media (max-width: 600px) {
+  .firewall-panel .panel-head { align-items: flex-start; }
+  .readonly-badge { display: table; margin: 8px 0 0; }
+  .firewall-tools { padding-inline: 14px; flex-wrap: wrap; gap: 14px; }
+  .firewall-tools input[type="search"] { max-width: none; }
+  .firewall-state, .firewall-warnings { margin-inline: 14px; }
+  .firewall-caption { font-size: 11px; }
+}
 </style>
 </head>
 <body>
@@ -181,6 +226,26 @@ input:focus, select:focus { outline: 2px solid var(--blue-light); border-color: 
       </div>
       <div class="panel-foot">Изменения применяются сразу. Порт панели зарезервирован.</div>
     </section>
+
+    <section class="rules-panel firewall-panel" aria-labelledby="firewall-title">
+      <div class="panel-head">
+        <div><h2 id="firewall-title">Системный firewall <span class="readonly-badge">Только просмотр</span></h2><p class="firewall-caption">Текущие правила сервера, включая цепочки fail2ban.</p></div>
+        <button id="firewall-refresh" class="secondary">↻ Обновить</button>
+      </div>
+      <div class="firewall-tools">
+        <input id="firewall-search" type="search" aria-label="Поиск в системном firewall" placeholder="Цепочка, адрес или порт">
+        <label class="firewall-filter"><input id="firewall-fail2ban" type="checkbox"> Только fail2ban</label>
+      </div>
+      <p id="firewall-state" class="firewall-state" role="status">Загрузка правил…</p>
+      <div id="firewall-warnings" class="firewall-warnings" role="status" hidden></div>
+      <div class="table-wrap firewall-view">
+        <table aria-label="Текущие правила системного firewall">
+          <thead><tr><th>№</th><th>ПРОТОКОЛ</th><th>ИСТОЧНИК</th><th>НАЗНАЧЕНИЕ</th><th>ПОРТЫ<br>ИСТ. → НАЗН.</th><th>ДЕЙСТВИЕ</th><th>УСЛОВИЯ</th></tr></thead>
+          <tbody id="firewall-rules"></tbody>
+        </table>
+      </div>
+      <div class="panel-foot">Эти правила действуют на сервере. Изменять их в этой таблице нельзя.</div>
+    </section>
   </main>
 
   <dialog id="editor">
@@ -205,8 +270,12 @@ input:focus, select:focus { outline: 2px solid var(--blue-light); border-color: 
 <script>const $ = (id) => document.getElementById(id);
 let rules = [];
 let busy = false;
+let firewallData = null;
+let firewallBusy = false;
+let firewallPending = false;
 const form = $('rule-form');
 
+const demoFirewall = {"chains": [{"backend": "iptables-nft", "family": "IPv4", "table": "filter", "name": "INPUT", "policy": "DROP", "fail2ban": false, "rules": [{"protocol": "Любой", "source": "Любой", "destination": "Любой", "source_port": "Любой", "destination_port": "Любой", "action": "ACCEPT", "conditions": ["Состояние: ESTABLISHED,RELATED"], "source_members": [], "destination_members": []}, {"protocol": "tcp", "source": "Любой", "destination": "Любой", "source_port": "Любой", "destination_port": "22", "action": "f2b-sshd", "conditions": [], "source_members": [], "destination_members": []}, {"protocol": "tcp", "source": "Любой", "destination": "Любой", "source_port": "Любой", "destination_port": "22,8443", "action": "ACCEPT", "conditions": [], "source_members": [], "destination_members": []}]}, {"backend": "iptables-nft", "family": "IPv4", "table": "filter", "name": "f2b-sshd", "policy": null, "fail2ban": true, "rules": [{"protocol": "Любой", "source": "203.0.113.18/32", "destination": "Любой", "source_port": "Любой", "destination_port": "Любой", "action": "REJECT", "conditions": ["Ответ: icmp-port-unreachable"], "source_members": [], "destination_members": []}, {"protocol": "Любой", "source": "Любой", "destination": "Любой", "source_port": "Любой", "destination_port": "Любой", "action": "RETURN", "conditions": [], "source_members": [], "destination_members": []}]}], "warnings": [], "sources": ["IPv4 / nft"]};
 
 function demoUuid() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -219,6 +288,7 @@ let demoRules = [
   {id:'b29bc2cf-47c6-43bc-8e49-5d560378fe67',name:'VPN · пример',protocol:'udp',input_port:51820,target_ip:'192.0.2.20',target_port:51820,enabled:false}
 ];
 async function request(path = '/api/rules', method = 'GET', body) {
+  if (path === '/api/firewall') return {...demoFirewall, updated_at: new Date().toISOString()};
   if (method === 'PUT') {
     if (demoRules.some(r => r.id !== body.id && r.enabled && body.enabled && r.protocol === body.protocol && r.input_port === body.input_port))
       throw new Error('Этот протокол и входящий порт уже используются.');
@@ -272,16 +342,94 @@ async function refresh() {
   busy = true; $('refresh').disabled = true;
   try { render(await request()); notice(''); }
   catch (error) { notice(error.message, true); $('connection').textContent = '● Нет связи с worker'; $('connection').className = 'badge offline'; }
-  finally { busy = false; $('refresh').disabled = false; }
+  finally { busy = false; $('refresh').disabled = false; $('firewall-refresh').disabled = firewallBusy; }
+}
+
+const actionNames = {ACCEPT: 'Разрешить', DROP: 'Заблокировать', REJECT: 'Отклонить', RETURN: 'Вернуться',
+  DNAT: 'Перенаправить', SNAT: 'Изменить источник', MASQUERADE: 'Маскарадинг',
+  CONNMARK: 'Метка соединения', MARK: 'Метка пакета', LOG: 'Записать в журнал', QUEUE: 'В очередь', NFQUEUE: 'В очередь'};
+
+function renderFirewall() {
+  if (!firewallData) return;
+  const query = $('firewall-search').value.trim().toLowerCase();
+  const fail2banOnly = $('firewall-fail2ban').checked;
+  const chains = firewallData.chains.filter(chain => (!fail2banOnly || chain.fail2ban) &&
+    (!query || JSON.stringify(chain).toLowerCase().includes(query)));
+  const chainNames = new Set(firewallData.chains.map(c => JSON.stringify([c.backend, c.family, c.table, c.name])));
+  $('firewall-rules').replaceChildren();
+  for (const chain of chains) {
+    const header = document.createElement('tr'); header.className = 'firewall-chain';
+    const heading = document.createElement('td'); heading.colSpan = 7;
+    const name = document.createElement('strong'); name.textContent = chain.name; heading.append(name);
+    const meta = document.createElement('span');
+    meta.textContent = ` ${chain.family} · ${chain.table} · ${chain.backend}`;
+    heading.append(meta);
+    if (chain.fail2ban) {
+      const tag = document.createElement('span'); tag.className = 'firewall-tag'; tag.textContent = 'fail2ban'; heading.append(tag);
+    }
+    if (chain.policy) {
+      const policy = document.createElement('span'); policy.className = 'firewall-policy';
+      policy.textContent = `Политика: ${actionNames[chain.policy] || chain.policy}`; heading.append(policy);
+    }
+    if (chain.hook) { const hook = document.createElement('span'); hook.textContent = ` · ${chain.hook}`; heading.append(hook); }
+    header.append(heading); $('firewall-rules').append(header);
+    if (!chain.rules.length) {
+      const row = document.createElement('tr'); const empty = document.createElement('td'); empty.colSpan = 7;
+      empty.className = 'firewall-no-rules'; empty.textContent = 'В этой цепочке нет отдельных правил'; row.append(empty); $('firewall-rules').append(row);
+    }
+    chain.rules.forEach((rule, index) => {
+      const row = document.createElement('tr');
+      const cell = (text, cls = '') => { const td = document.createElement('td'); td.textContent = text; td.className = cls; row.append(td); return td; };
+      cell(index + 1);
+      cell(rule.protocol === 'Любой' ? rule.protocol : rule.protocol.toUpperCase());
+      for (const field of ['source', 'destination']) {
+        const td = cell(rule[field], 'firewall-address');
+        if (rule[field + '_members']?.length) {
+          const details = document.createElement('details'); const summary = document.createElement('summary');
+          summary.textContent = `Адреса в наборе: ${rule[field + '_members'].length}`;
+          const members = document.createElement('div'); members.className = 'firewall-members';
+          for (const address of rule[field + '_members']) { const item = document.createElement('span'); item.textContent = address; members.append(item); }
+          details.append(summary, members); td.append(details);
+        }
+      }
+      cell(`${rule.source_port} → ${rule.destination_port}`, 'firewall-ports');
+      const jump = chainNames.has(JSON.stringify([chain.backend, chain.family, chain.table, rule.action]));
+      cell(actionNames[rule.action] || (jump ? `Переход: ${rule.action}` : rule.action));
+      const conditions = cell('');
+      if (rule.conditions.length) {
+        const list = document.createElement('ul');
+        for (const condition of rule.conditions) { const item = document.createElement('li'); item.textContent = condition; list.append(item); }
+        conditions.append(list);
+      } else { conditions.textContent = '—'; }
+      $('firewall-rules').append(row);
+    });
+  }
+  const time = new Date(firewallData.updated_at).toLocaleTimeString('ru-RU');
+  $('firewall-state').textContent = !firewallData.sources.length ? 'Не удалось прочитать системный firewall.' :
+    !chains.length ? (firewallData.chains.length ? 'По вашему фильтру цепочки не найдены.' : 'Системных цепочек не найдено.') : `Обновлено ${time}`;
+  $('firewall-warnings').hidden = !firewallData.warnings.length;
+  $('firewall-warnings').textContent = firewallData.warnings.length ? 'Обзор неполный: ' + firewallData.warnings.join('; ') + '.' : '';
+}
+
+async function refreshFirewall() {
+  if (firewallBusy) { firewallPending = true; return; }
+  firewallBusy = true; $('firewall-refresh').disabled = true;
+  $('firewall-state').textContent = firewallData ? 'Обновление… Предыдущий снимок показан ниже.' : 'Загрузка правил…';
+  try { firewallData = await request('/api/firewall'); renderFirewall(); }
+  catch (error) { $('firewall-state').textContent = (firewallData ? 'Не удалось обновить. Ниже — предыдущий снимок. ' : 'Правила firewall недоступны. ') + error.message; }
+  finally {
+    firewallBusy = false; $('firewall-refresh').disabled = busy;
+    if (firewallPending) { firewallPending = false; refreshFirewall(); }
+  }
 }
 
 async function mutate(operation) {
   if (busy) return;
   busy = true;
   document.querySelectorAll('button').forEach(b => b.disabled = true);
-  try { render(await operation()); notice('Изменения применены.'); return true; }
+  try { render(await operation()); notice('Изменения применены.'); refreshFirewall(); return true; }
   catch (error) { notice(error.message, true); $('form-error').textContent = error.message; return false; }
-  finally { busy = false; document.querySelectorAll('button').forEach(b => b.disabled = false); }
+  finally { busy = false; document.querySelectorAll('button').forEach(b => b.disabled = false); $('firewall-refresh').disabled = firewallBusy; }
 }
 
 function edit(rule) {
@@ -306,6 +454,9 @@ form.addEventListener('submit', async (event) => {
 $('new-rule').onclick = $('empty-new').onclick = () => edit();
 $('close-editor').onclick = $('cancel-editor').onclick = () => $('editor').close();
 $('refresh').onclick = refresh;
+$('firewall-refresh').onclick = refreshFirewall;
+$('firewall-search').oninput = $('firewall-fail2ban').onchange = renderFirewall;
 refresh();
+refreshFirewall();
 </script></body>
 </html>

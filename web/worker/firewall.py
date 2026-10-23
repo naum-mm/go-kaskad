@@ -93,6 +93,9 @@ def read_rules(db):
 
 
 def execute(command, payload=None):
+    if command == "firewall":
+        from system_firewall import snapshot
+        return snapshot()
     with connect() as db:
         # Also serialize independent CLI calls, not only the worker's RPC loop.
         db.execute("BEGIN IMMEDIATE")
