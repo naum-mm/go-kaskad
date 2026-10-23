@@ -15,8 +15,16 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -v
           bash -n install.sh gokaskad.sh
+          bash -n uninstall.sh
           sh -n gokaskad-openbsd.sh
           node --check web/gui/app.js
+          python3 tools/build_preview.py
+          git diff --exit-code -- docs/preview.html
+      - name: Uninstaller tests in disposable filesystem
+        run: |
+          docker run --rm --network none --read-only --tmpfs /tmp:exec --tmpfs /opt --tmpfs /etc/sysctl.d \
+            -e GOKASKAD_UNINSTALL_TEST_CONTAINER=1 -v "$PWD:/src:ro" \
+            python:3.13-slim-bookworm python3 /src/tests/uninstall_smoke.py
       - name: Prepare test-only credentials and certificate
         run: |
           sudo apt-get update

@@ -13,6 +13,7 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+import http.client
 
 
 def docker(*args):
@@ -48,12 +49,20 @@ def request(path="/api/rules", method="GET", data=None, auth=True, origin=None, 
 
 
 assert request(auth=False)[0] == 401
+plain = http.client.HTTPConnection("localhost", int(port), timeout=10)
+plain.request("GET", "/?from=http")
+redirect = plain.getresponse()
+assert redirect.status == 308
+assert redirect.getheader("Location") == base + "/?from=http"
+assert redirect.getheader("WWW-Authenticate") is None
+redirect.read()
+plain.close()
 assert request("/")[0] == 200
 assert request("/api/health")[0] == 200
 for name in ("api", "gui", "worker"):
     container = json.loads(docker("inspect", f"{project}-{name}-1"))[0]
     assert not container["HostConfig"]["PortBindings"], f"Unexpected published port on {name}"
-print("PASS: HTTPS, authentication, GUI, API/worker readiness, private service ports")
+print("PASS: HTTP-to-HTTPS redirect preserves port/path, HTTPS, authentication, GUI, private service ports")
 
 target_name = "gokaskad-smoke-target-" + uuid.uuid4().hex[:8]
 target_code = '''

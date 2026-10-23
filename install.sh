@@ -6,6 +6,24 @@ umask 077
 [[ $(uname -s) == Linux ]] || { echo 'Нужен Linux с Docker и iptables.' >&2; exit 1; }
 command -v apt-get >/dev/null || { echo 'Автоустановка поддерживает Debian и Ubuntu.' >&2; exit 1; }
 
+root=/opt/go-kaskad
+[[ ! -L $root ]] || { echo 'Каталог установки не должен быть симлинком.' >&2; exit 1; }
+install -d -m 700 "$root" "$root/config" "$root/config/tls" "$root/releases"
+exec 9>"$root/install.lock"
+flock -n 9 || { echo 'Установка/удаление уже выполняется.' >&2; exit 1; }
+[[ ! -e $root/current ]] || { echo "Установка уже существует: $root/current. Для обновления см. README." >&2; exit 1; }
+[[ ! -L /etc/sysctl.d/90-gokaskad.conf ]] || { echo 'Не заменяю симлинк /etc/sysctl.d/90-gokaskad.conf.' >&2; exit 1; }
+state="$root/install-state"
+install -d -m 700 "$state"
+if [[ ! -f $state/packages.before ]]; then
+    dpkg-query -W -f='${binary:Package}\t${db:Status-Status}\n' | awk '$2=="installed" {print $1}' | sort -u >"$state/packages.before"
+    cat /proc/sys/net/ipv4/ip_forward >"$state/ip-forward.before"
+    if [[ -f /etc/sysctl.d/90-gokaskad.conf ]]; then
+        cp -p /etc/sysctl.d/90-gokaskad.conf "$state/sysctl.previous"
+        touch "$state/sysctl.existed"
+    fi
+fi
+
 if [[ -z ${ADMIN_PASSWORD:-} ]]; then
     read -r -s -p 'Пароль администратора (не менее 12 символов): ' ADMIN_PASSWORD </dev/tty
     echo >/dev/tty
@@ -41,13 +59,11 @@ if ! docker compose version >/dev/null 2>&1; then
 fi
 docker compose version >/dev/null || { echo 'Нужен Docker Compose v2.' >&2; exit 1; }
 docker info >/dev/null
-
-root=/opt/go-kaskad
-install -d -m 700 "$root" "$root/config" "$root/config/tls" "$root/releases"
-exec 9>"$root/install.lock"
-flock -n 9 || { echo 'Установка уже выполняется.' >&2; exit 1; }
-# Do not replace an existing deployment silently. Its data and credentials stay intact.
-[[ ! -e $root/current ]] || { echo "Установка уже существует: $root/current. Для обновления см. README." >&2; exit 1; }
+dpkg-query -W -f='${binary:Package}\t${db:Status-Status}\n' | awk '$2=="installed" {print $1}' | sort -u >"$state/packages.after"
+comm -13 "$state/packages.before" "$state/packages.after" >"$state/new-packages"
+if [[ ! -f $state/images.before ]]; then
+    docker image ls -aq --no-trunc | sort -u >"$state/images.before"
+fi
 if ss -H -ltn "sport = :$MANAGEMENT_PORT" | grep -q .; then
     echo "Порт $MANAGEMENT_PORT уже занят." >&2; exit 1
 fi
@@ -80,6 +96,8 @@ sysctl -w net.ipv4.ip_forward=1
 cd "$release"
 docker compose config --quiet
 docker compose up -d --build --wait --wait-timeout 180
+docker image ls -aq --no-trunc | sort -u >"$state/images.after"
+comm -13 "$state/images.before" "$state/images.after" >"$state/new-images"
 # Verify the authenticated HTTPS path, including nginx -> API -> worker -> SQLite.
 [[ $(curl --silent --retry 10 --retry-connrefused --retry-delay 1 --output /dev/null --write-out '%{http_code}' --cacert "$root/config/tls/server.crt" \
     "https://localhost:$MANAGEMENT_PORT/api/rules") == 401 ]] || {
