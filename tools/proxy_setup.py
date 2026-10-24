@@ -247,6 +247,7 @@ def https_config(plan):
         proxy_ssl_server_name on;
         proxy_ssl_name {domain};
         proxy_ssl_verify on;
+        proxy_ssl_verify_depth 3;
         proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
     }}
 }}
@@ -269,7 +270,9 @@ def wait_http(url, domain, expected, *, token=None, auth_file=None, attempts=30)
             return
         if attempt + 1 < attempts:
             time.sleep(1)
-    raise SetupError(f'Не прошла проверка {domain}: {last}. Проверьте DNS, доступность TCP 80/443 и nginx.')
+    hint = ('Nginx вернул 502: проверьте соединение с upstream и проверку его TLS-цепочки в error log nginx.'
+            if status == '502' else 'Проверьте DNS, доступность TCP 80/443 и nginx.')
+    raise SetupError(f'Не прошла проверка {domain}: {last}. {hint}')
 
 
 def save_state(plan):

@@ -49,6 +49,31 @@ def main():
     run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2',
          '-subj', '/CN=Gokaskad disposable test CA', '-keyout', str(key), '-out', str(ca)])
 
+    # Match cross-signed ACME chains: leaf -> issuing CA -> intermediate -> trusted root.
+    intermediate = fixture / 'intermediate.crt'
+    intermediate_key = fixture / 'intermediate.key'
+    intermediate_csr = fixture / 'intermediate.csr'
+    intermediate_ext = fixture / 'intermediate.cnf'
+    intermediate_ext.write_text('basicConstraints=critical,CA:TRUE,pathlen:1\nkeyUsage=critical,keyCertSign,cRLSign\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n')
+    run(['openssl', 'req', '-new', '-newkey', 'rsa:2048', '-nodes',
+         '-subj', '/CN=Gokaskad disposable intermediate CA',
+         '-keyout', str(intermediate_key), '-out', str(intermediate_csr)])
+    run(['openssl', 'x509', '-req', '-in', str(intermediate_csr), '-CA', str(ca),
+         '-CAkey', str(key), '-CAcreateserial', '-days', '2', '-extfile',
+         str(intermediate_ext), '-out', str(intermediate)])
+
+    issuing = fixture / 'issuing.crt'
+    issuing_key = fixture / 'issuing.key'
+    issuing_csr = fixture / 'issuing.csr'
+    issuing_ext = fixture / 'issuing.cnf'
+    issuing_ext.write_text('basicConstraints=critical,CA:TRUE,pathlen:0\nkeyUsage=critical,keyCertSign,cRLSign\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n')
+    run(['openssl', 'req', '-new', '-newkey', 'rsa:2048', '-nodes',
+         '-subj', '/CN=Gokaskad disposable issuing CA',
+         '-keyout', str(issuing_key), '-out', str(issuing_csr)])
+    run(['openssl', 'x509', '-req', '-in', str(issuing_csr), '-CA', str(intermediate),
+         '-CAkey', str(intermediate_key), '-CAcreateserial', '-days', '2', '-extfile',
+         str(issuing_ext), '-out', str(issuing)])
+
     def certificate(name, directory):
         directory.mkdir(parents=True, exist_ok=True)
         ext = fixture / 'ext.cnf'
@@ -56,8 +81,11 @@ def main():
         csr = fixture / 'request.csr'
         run(['openssl', 'req', '-new', '-newkey', 'rsa:2048', '-nodes', '-subj', '/CN=' + name,
              '-keyout', str(directory / 'privkey.pem'), '-out', str(csr)])
-        run(['openssl', 'x509', '-req', '-in', str(csr), '-CA', str(ca), '-CAkey', str(key),
+        run(['openssl', 'x509', '-req', '-in', str(csr), '-CA', str(issuing), '-CAkey', str(issuing_key),
              '-CAcreateserial', '-days', '2', '-extfile', str(ext), '-out', str(directory / 'fullchain.pem')])
+
+        with (directory / 'fullchain.pem').open('a') as chain:
+            chain.write(issuing.read_text() + intermediate.read_text())
 
     certificate('site.example.test', le / 'live/site.example.test')
     certificate('localhost', fixture / 'initial')
@@ -189,6 +217,10 @@ networks:
             assert conf.read_text() == original + '# website edit after install\n'
             site_ok()
         print('PASS: real HTTP-01 webroot, SNI sites, verified TLS, authentication, certificate rotation, recreation and domain cleanup')
+    except Exception:
+        logs = subprocess.run(['docker', 'logs', '--tail', '30', outer], capture_output=True, text=True)
+        print(logs.stdout + logs.stderr, flush=True)
+        raise
     finally:
         subprocess.run(['docker', 'compose', 'down', '-v'], cwd=root / 'current', capture_output=True)
         subprocess.run(['docker', 'rm', '-f', outer], capture_output=True)

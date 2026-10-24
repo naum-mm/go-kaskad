@@ -236,7 +236,7 @@ location ^~ /.well-known/acme-challenge/ { root /var/www/acme; try_files $uri =4
 
     def test_https_uses_verified_domain_tls_and_forwards_auth(self):
         config = p.https_config(dict(self.plan, kind='docker', backend=p.ALIAS + ':443'))
-        for part in ('proxy_ssl_verify on;', 'proxy_ssl_name panel.example.com;', 'resolver 127.0.0.11',
+        for part in ('proxy_ssl_verify on;', 'proxy_ssl_verify_depth 3;', 'proxy_ssl_name panel.example.com;', 'resolver 127.0.0.11',
                      'proxy_set_header Authorization $http_authorization;', 'proxy_read_timeout 130s;'):
             self.assertIn(part, config)
 

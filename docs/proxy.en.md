@@ -32,6 +32,7 @@ The existing Certbot timer is reused; otherwise `certbot.timer` is enabled.
 A dedicated deploy hook copies the domain certificate to the panel's TLS directory
 and reloads both nginx instances. Upstream TLS verifies the domain and CA chain;
 it does not use `--insecure` or disable certificate verification.
+`proxy_ssl_verify_depth 3` supports chains with multiple intermediate CAs.
 
 Only the Gokaskad nginx joins the existing website's Docker network. The panel's
 host port binds to loopback, while the API remains in the internal `control`
