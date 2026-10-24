@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # Run on the Linux server that will forward traffic. Inputs are read from /dev/tty.
 set -Eeuo pipefail
+# bash may be reading this script from curl or a heredoc. Docker must not
+# consume the remaining installer commands as its interactive stdin.
+docker() { command docker "$@" </dev/null; }
+apt-get() { command apt-get "$@" </dev/null; }
 umask 077
 export -n ADMIN_PASSWORD
 [[ $EUID -eq 0 ]] || { echo 'Запустите установщик через sudo bash.' >&2; exit 1; }
 [[ $(uname -s) == Linux ]] || { echo 'Нужен Linux с Docker и iptables.' >&2; exit 1; }
-command -v apt-get >/dev/null || { echo 'Автоустановка поддерживает Debian и Ubuntu.' >&2; exit 1; }
+type -P apt-get >/dev/null || { echo 'Автоустановка поддерживает Debian и Ubuntu.' >&2; exit 1; }
 
 configure=false
 resume=false
@@ -26,6 +30,11 @@ if ! $configure && [[ -e $root/current ]]; then
 fi
 if $configure; then
     [[ -f $root/current/.env ]] || { echo 'Сначала установите Gokaskad.' >&2; exit 1; }
+    if ! $resume; then
+        grep -q RESERVED_TCP_PORTS "$root/current/compose.yaml" || {
+            echo 'Сначала обновите Gokaskad по инструкции README.' >&2; exit 1;
+        }
+    fi
 fi
 [[ ! -L /etc/sysctl.d/90-gokaskad.conf ]] || { echo 'Не заменяю симлинк /etc/sysctl.d/90-gokaskad.conf.' >&2; exit 1; }
 state="$root/install-state"
@@ -58,7 +67,7 @@ dpkg-query -W -f='${binary:Package}\t${db:Status-Status}\n' | awk '$2=="installe
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends ca-certificates curl openssl iproute2 iptables apache2-utils util-linux python3
-if ! command -v docker >/dev/null; then
+if ! type -P docker >/dev/null; then
     apt-get install -y --no-install-recommends docker.io
     systemctl enable --now docker
 fi
@@ -173,9 +182,6 @@ if [[ -n $RESERVED_TCP_PORTS ]]; then
 fi
 
 if $configure; then
-    grep -q RESERVED_TCP_PORTS "$root/current/compose.yaml" || {
-        echo 'Сначала обновите Gokaskad по инструкции README.' >&2; exit 1;
-    }
     cd "$root/current"
     docker compose exec -T worker bash /app/gokaskad.sh --machine list >"$work/rules.json"
     python3 - "$work/rules.json" <<'CHECK'

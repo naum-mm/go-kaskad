@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Remove Gokaskad resources only. Optional package removal requires an install manifest.
 set -Eeuo pipefail
+# bash may be reading this script from curl or a heredoc. Docker must not
+# consume the remaining installer commands as its interactive stdin.
+docker() { command docker "$@" </dev/null; }
 [[ $EUID -eq 0 ]] || { echo 'Запустите через sudo bash. / Run with sudo bash.' >&2; exit 1; }
 purge=false
 case ${1:-} in

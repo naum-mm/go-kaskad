@@ -168,6 +168,11 @@ sudo docker compose restart worker
 
 ### Полное обновление
 
+В блоках `bash <<'UPDATE'` все неинтерактивные команды Docker запускаются с
+`</dev/null`: иначе `docker compose exec -T` может прочитать оставшиеся строки
+скрипта, и переключение `current` не выполнится. Установщик и удаление также
+изолируют stdin служебных команд от кода, переданного через `curl | bash`.
+
 Для блока «Системный firewall» нужно обновить **GUI, API и worker**: замены только
 HTML/CSS недостаточно. Существующий пароль, порт, сертификат и volume БД используются
 повторно. Полное обновление из `main` на сервере:
@@ -185,10 +190,10 @@ if [ -f "$root/config/proxy.json" ]; then
   install -m 600 "$release/tools/proxy_setup.py" "$root/config/proxy_setup.py"
 fi
 cd "$release"
-docker compose config --quiet
-docker compose up -d --build --wait --wait-timeout 180
-docker compose exec -T nginx nginx -t
-ln -sfn "$release" "$root/current"
+docker compose config --quiet </dev/null
+docker compose up -d --build --wait --wait-timeout 180 </dev/null
+docker compose exec -T nginx nginx -t </dev/null
+ln -sfnT "$release" "$root/current"
 UPDATE
 ```
 

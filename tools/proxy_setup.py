@@ -27,6 +27,8 @@ class SetupError(RuntimeError):
 
 
 def run(args, *, check=True, timeout=60, **kwargs):
+    if 'input' not in kwargs:
+        kwargs.setdefault('stdin', subprocess.DEVNULL)
     return subprocess.run(args, check=check, text=True, capture_output=True,
                           timeout=timeout, **kwargs)
 

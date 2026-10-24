@@ -19,6 +19,8 @@ import base64,json,os,sys,tarfile
 from pathlib import Path
 name=Path(sys.argv[0]).name
 a=sys.argv[1:]
+if name in ('docker','apt-get'):
+ sys.stdin.buffer.read()  # Deliberately drain stdin, just like an attached Docker exec.
 root=Path('/opt/go-kaskad')
 site=Path('/opt/website')
 with open('/tmp/install-commands.log','a') as f:f.write(name+' '+' '.join(a)+'\n')
@@ -37,10 +39,13 @@ elif name=='docker':
   print('include /etc/nginx/conf.d/*.conf;\n# configuration file /etc/nginx/conf.d/default.conf:\n'+(site/'nginx.conf').read_text())
  elif a[:3]==['compose','exec','-T'] and '--machine' in a:print('{"rules": []}')
  elif a[:2]==['ps','-aq']:print('website-id')
+elif name=='apt-get' and 'docker.io' in a:
+ target=Path('/tmp/install-fake-bin/docker')
+ target.write_text(Path(sys.argv[0]).read_text());target.chmod(0o755)
 elif name=='curl':
- if '-o' in a:
-  out=Path(a[a.index('-o')+1])
-  with tarfile.open(out,'w:gz') as tar:
+ if 'codeload.github.com' in ' '.join(a):
+  archive=tarfile.open(Path(a[a.index('-o')+1]),'w:gz') if '-o' in a else tarfile.open(fileobj=sys.stdout.buffer,mode='w|gz')
+  with archive as tar:
    for f in ('compose.yaml','web/worker/firewall.py','tools/proxy_setup.py'):
     tar.add('/src/'+f,arcname='source/'+f)
  elif '/.well-known/acme-challenge/' in a[-1]:
@@ -105,7 +110,7 @@ class InstallerTests(unittest.TestCase):
                       ADMIN_PASSWORD='development-password', PANEL_DOMAIN='panel.example.com')
 
     def install(self,*args,**env):
-        return subprocess.run(['bash','/src/install.sh',*args],env=dict(self.env,**env),capture_output=True,text=True,timeout=40)
+        return subprocess.run(['bash','-s','--',*args],input=Path('/src/install.sh').read_text(),env=dict(self.env,**env),capture_output=True,text=True,timeout=40)
 
     def test_one_command_auto_integrates_existing_site_and_preserves_password(self):
         original=(SITE/'nginx.conf').read_text()
@@ -151,6 +156,37 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(LOG.read_text().count('htpasswd '),1)
         self.assertEqual(json.loads((ROOT/'config/proxy.json').read_text())['phase'],'ready')
 
+    def test_old_version_is_rejected_before_dependencies_or_domain_prompt(self):
+        result=self.install(INSTALL_MODE='standalone',MANAGEMENT_PORT='18443')
+        self.assertEqual(result.returncode,0,result.stderr)
+        compose=ROOT/'current/compose.yaml'
+        compose.write_text(compose.read_text().replace('RESERVED_TCP_PORTS','OLD_VERSION'))
+        LOG.write_text('')
+        result=self.install('--configure-domain',PANEL_DOMAIN='')
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('Сначала обновите Gokaskad',result.stderr)
+        self.assertEqual(LOG.read_text(),'')
+        self.assertNotIn('Домен панели',result.stdout+result.stderr)
+
+    def test_documented_heredoc_update_switches_current_after_docker_exec(self):
+        result=self.install(INSTALL_MODE='standalone',MANAGEMENT_PORT='18443')
+        self.assertEqual(result.returncode,0,result.stderr)
+        previous=(ROOT/'current').resolve()
+        guide=Path('/src/docs/web.ru.md').read_text()
+        code=guide.split("sudo bash <<'UPDATE'\n",1)[1].split('\nUPDATE\n',1)[0]
+        result=subprocess.run(['bash','-s'],input=code+'\necho UPDATE_COMPLETED\n',env=self.env,capture_output=True,text=True,timeout=30)
+        self.assertEqual(result.returncode,0,result.stdout+'\n'+result.stderr)
+        self.assertIn('UPDATE_COMPLETED',result.stdout)
+        self.assertNotEqual((ROOT/'current').resolve(),previous)
+        self.assertTrue((ROOT/'current/compose.yaml').is_file())
+
+    def test_fresh_host_still_installs_docker_with_stdin_wrapper(self):
+        (BIN/'docker').unlink()
+        result=self.install(INSTALL_MODE='standalone',MANAGEMENT_PORT='18443')
+        self.assertEqual(result.returncode,0,result.stdout+'\n'+result.stderr)
+        self.assertIn('apt-get install -y --no-install-recommends docker.io',LOG.read_text())
+        self.assertTrue((ROOT/'current').is_dir())
+
     def test_standalone_still_accepts_password_and_port(self):
         result=self.install(INSTALL_MODE='standalone',MANAGEMENT_PORT='18443')
         self.assertEqual(result.returncode,0,result.stdout+'\n'+result.stderr)
@@ -162,7 +198,7 @@ class InstallerTests(unittest.TestCase):
         result=self.install()
         self.assertEqual(result.returncode,0,result.stderr)
         (SITE/'nginx.conf').write_text((SITE/'nginx.conf').read_text()+'# later site change\n')
-        result=subprocess.run(['bash','/src/uninstall.sh'],env=self.env,capture_output=True,text=True,timeout=30)
+        result=subprocess.run(['bash','-s'],input=Path('/src/uninstall.sh').read_text(),env=self.env,capture_output=True,text=True,timeout=30)
         self.assertEqual(result.returncode,0,result.stdout+'\n'+result.stderr)
         config=(SITE/'nginx.conf').read_text()
         self.assertNotIn('server_name panel.example.com;',config)

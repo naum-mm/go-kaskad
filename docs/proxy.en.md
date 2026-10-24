@@ -39,6 +39,10 @@ network. SQLite has no network port. TCP ports 80/443 are reserved in forwarding
 
 ## Failure recovery and updates
 
+Installer, helper and uninstall subprocesses do not inherit the script input stream:
+Docker cannot consume the rest of a `curl | bash` or heredoc script. In manual
+update heredocs, redirect non-interactive Docker commands with `</dev/null`.
+
 The installer backs up the proxy configuration and adds a marked block. Existing
 single-file bind mounts are edited in place, preserving the inode. Failed nginx
 validation/reload restores the previous file. TLS/authentication checks retry
