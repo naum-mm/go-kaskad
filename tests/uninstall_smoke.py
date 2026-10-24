@@ -80,10 +80,10 @@ if name=='apt-get' and args[:2]==['-s','purge']:
         self.assertFalse(ROOT.exists())
         self.assertNotIn('sysctl -w', LOG.read_text())
 
-    def test_shared_docker_blocks_package_removal(self):
+    def test_shared_docker_preserves_packages_but_removes_project(self):
         result = self.run_uninstall('--remove-packages', FAKE_SHARED='1')
-        self.assertNotEqual(result.returncode, 0)
-        self.assertTrue((ROOT / 'install-state/new-packages').exists())
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(ROOT.exists())
         self.assertNotIn('apt-get purge', LOG.read_text())
 
     def test_unrelated_dependency_blocks_package_removal(self):
@@ -94,8 +94,9 @@ if name=='apt-get' and args[:2]==['-s','purge']:
     def test_legacy_installation_does_not_guess_packages(self):
         (ROOT / 'install-state/new-packages').unlink()
         result = self.run_uninstall('--remove-packages')
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(LOG.read_text(), '')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(ROOT.exists())
+        self.assertNotIn('apt-get purge', LOG.read_text())
 
 if __name__ == '__main__':
     unittest.main()

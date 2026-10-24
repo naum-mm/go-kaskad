@@ -221,6 +221,8 @@ def http_config(plan):
 
 def https_config(plan):
     domain = plan['domain']
+    certbase = '/etc/letsencrypt/' + ('gokaskad-selfsigned/' if plan.get('certificate_type') == 'selfsigned' else 'live/') + domain
+    trust = certbase + '/fullchain.pem' if plan.get('certificate_type') == 'selfsigned' else '/etc/ssl/certs/ca-certificates.crt'
     resolver = 'resolver 127.0.0.11 valid=5s ipv6=off;' if plan['kind'] == 'docker' else ''
     backend = plan['backend'].format(port=plan['port'])
     ipv6 = 'listen [::]:443 ssl;' if plan.get('ipv6') else ''
@@ -228,8 +230,8 @@ def https_config(plan):
     listen 443 ssl;
     {ipv6}
     server_name {domain};
-    ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
+    ssl_certificate {certbase}/fullchain.pem;
+    ssl_certificate_key {certbase}/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
     server_tokens off;
     client_max_body_size 16k;
@@ -248,16 +250,18 @@ def https_config(plan):
         proxy_ssl_name {domain};
         proxy_ssl_verify on;
         proxy_ssl_verify_depth 3;
-        proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+        proxy_ssl_trusted_certificate {trust};
     }}
 }}
 '''
 
 
-def wait_http(url, domain, expected, *, token=None, auth_file=None, attempts=30):
+def wait_http(url, domain, expected, *, token=None, auth_file=None, attempts=30, ca_file=None):
     port = 443 if url.startswith('https:') else 80
     args = ['curl', '--silent', '--show-error', '--connect-timeout', '2', '--max-time', '5',
             '--noproxy', '*', '--resolve', f'{domain}:{port}:127.0.0.1']
+    if ca_file:
+        args += ['--cacert', str(ca_file)]
     if auth_file:
         args += ['--header', '@' + str(auth_file)]
     # stderr can contain transient certificate mismatch immediately after asynchronous reload.
@@ -285,8 +289,27 @@ def compose(*args):
     return run(['docker', 'compose', *args], cwd=ROOT / 'current', timeout=240)
 
 
+def certificate_source(plan):
+    return LE / ('gokaskad-selfsigned' if plan.get('certificate_type') == 'selfsigned' else 'live') / plan['domain']
+
+
+def selfsigned_certificate(plan):
+    directory = certificate_source(plan)
+    if (directory / 'fullchain.pem').exists():
+        valid = run(['openssl', 'x509', '-checkend', '2592000', '-noout', '-in', str(directory / 'fullchain.pem')], check=False)
+        if valid.returncode == 0:
+            return
+    ensure_directory(directory)
+    run(['openssl', 'req', '-x509', '-newkey', 'rsa:3072', '-sha256', '-nodes', '-days', '365',
+         '-subj', '/CN=' + plan['domain'], '-addext',
+         'subjectAltName=DNS:' + plan['domain'] + ',DNS:localhost,IP:127.0.0.1',
+         '-keyout', str(directory / 'privkey.pem'), '-out', str(directory / 'fullchain.pem')])
+    (directory / 'privkey.pem').chmod(0o600)
+    (directory / 'fullchain.pem').chmod(0o644)
+
+
 def copy_certificate(plan):
-    source = (LE / 'live') / plan['domain']
+    source = certificate_source(plan)
     destination = ROOT / 'config/tls'
     # Directory mount makes new certificate inodes visible to the panel container.
     for name, target in (('fullchain.pem', 'server.crt'), ('privkey.pem', 'server.key')):
@@ -335,13 +358,14 @@ def setup(plan, domain, port, auth_file):
                     or (name.endswith('.*') and plan['domain'].startswith(name[:-1]))
                     or (name.startswith('.') and (plan['domain'] == name[1:] or plan['domain'].endswith(name)))):
                 raise SetupError('Домен уже занят или nginx использует regex server_name; автоматическое подключение остановлено.')
-    certificate = LE / 'live' / plan['domain'] / 'fullchain.pem'
+    certificate = certificate_source(plan) / 'fullchain.pem'
     if certificate.exists():
         names = run(['openssl', 'x509', '-in', str(certificate), '-noout', '-ext', 'subjectAltName']).stdout
-        if set(re.findall(r'DNS:([^,\s]+)', names)) != {plan['domain']}:
+        expected_names = {plan['domain'], 'localhost'} if plan.get('certificate_type') == 'selfsigned' else {plan['domain']}
+        if set(re.findall(r'DNS:([^,\s]+)', names)) != expected_names:
             raise SetupError('Существующий сертификат содержит другие домены; он не будет заменён.')
     plan['conf_existed'] = conf.exists()
-    plan['certificate_owned'] = not ((LE / 'renewal') / (plan['domain'] + '.conf')).exists()
+    plan.setdefault('certificate_owned', not certificate.exists())
     backup = ROOT / 'config/proxy-nginx.before'
     backup.write_text(original)
     backup.chmod(0o600)
@@ -366,10 +390,7 @@ def certbot_binary():
     return binary
 
 
-def finish_setup(plan, auth_file):
-    # Save the exact owned text before each write so interrupted setup remains removable.
-    body = http_config(plan) if plan['phase'] != 'ready' else https_config(plan)
-    set_block(plan, body)
+def issue_webroot_certificate(plan):
     token = secrets.token_hex(16)
     challenge_dir = Path(plan['webroot']) / '.well-known/acme-challenge'
     ensure_directory(challenge_dir)
@@ -393,6 +414,29 @@ def finish_setup(plan, auth_file):
              '--webroot', '--webroot-path', plan['webroot']], timeout=240)
         if renewal_webroot(renewal, plan['domain']) != plan['webroot']:
             raise SetupError('Certbot не сохранил webroot для продления. Проверьте renewal-конфигурацию и повторите --resume-domain.')
+
+
+def install_renewal_hook(plan):
+    hook = (LE / 'renewal-hooks/deploy/gokaskad-panel')
+    hook.parent.mkdir(parents=True, exist_ok=True)
+    expected = '#!/bin/sh\nset -eu\nif [ "${RENEWED_LINEAGE:-}" = "/etc/letsencrypt/live/' + plan['domain'] + '" ]; then\n    /usr/bin/python3 /opt/go-kaskad/config/proxy_setup.py renew\nfi\n'
+    if hook.exists() and hook.read_text() != expected:
+        raise SetupError('Deploy hook gokaskad-panel уже существует и отличается; он не заменён.')
+    hook.write_text(expected)
+    hook.chmod(0o755)
+    timers = run(['systemctl', 'list-timers', '--all', '--no-legend']).stdout
+    if not re.search(r'\b(?:snap\.)?certbot[.\w-]*\.timer\b', timers):
+        run(['systemctl', 'enable', '--now', 'certbot.timer'])
+
+
+def finish_setup(plan, auth_file):
+    # Save the exact owned text before each write so interrupted setup remains removable.
+    body = http_config(plan) if plan['phase'] != 'ready' else https_config(plan)
+    set_block(plan, body)
+    if plan.get('certificate_type') == 'selfsigned':
+        selfsigned_certificate(plan)
+    else:
+        issue_webroot_certificate(plan)
     if plan['kind'] == 'docker':
         override = ROOT / 'config/proxy.compose.yaml'
         override.write_text('services:\n  nginx:\n    networks:\n      existing-proxy:\n        aliases: [' + ALIAS + ']\nnetworks:\n  existing-proxy:\n    external: true\n    name: ' + plan['network'] + '\n')
@@ -407,28 +451,47 @@ def finish_setup(plan, auth_file):
         compose('config', '--quiet')
         compose('up', '-d', '--no-deps', 'nginx')
     copy_certificate(plan)
-    hook = (LE / 'renewal-hooks/deploy/gokaskad-panel')
-    hook.parent.mkdir(parents=True, exist_ok=True)
-    expected = '#!/bin/sh\nset -eu\nif [ "${RENEWED_LINEAGE:-}" = "/etc/letsencrypt/live/' + plan['domain'] + '" ]; then\n    /usr/bin/python3 /opt/go-kaskad/config/proxy_setup.py renew\nfi\n'
-    if hook.exists() and hook.read_text() != expected:
-        raise SetupError('Deploy hook gokaskad-panel уже существует и отличается; он не заменён.')
-    hook.write_text(expected)
-    hook.chmod(0o755)
-    timers = run(['systemctl', 'list-timers', '--all', '--no-legend']).stdout
-    if not re.search(r'\b(?:snap\.)?certbot[.\w-]*\.timer\b', timers):
-        run(['systemctl', 'enable', '--now', 'certbot.timer'])
+    if plan.get('certificate_type') != 'selfsigned':
+        install_renewal_hook(plan)
     body = https_config(plan)
     set_block(plan, body)
-    wait_http(f"https://{plan['domain']}/api/health", plan['domain'], 401)
+    wait_http(f"https://{plan['domain']}/api/health", plan['domain'], 401, ca_file=(ROOT / 'config/tls/server.crt') if plan.get('certificate_type') == 'selfsigned' else None)
     if auth_file:
         wait_http(f"https://{plan['domain']}/api/health", plan['domain'], 200,
-                  token='"ready": true', auth_file=auth_file)
+                  token='"ready": true', auth_file=auth_file, ca_file=(ROOT / 'config/tls/server.crt') if plan.get('certificate_type') == 'selfsigned' else None)
     plan['phase'] = 'ready'
     save_state(plan)
     print(f"Готово: https://{plan['domain']}, пользователь admin. / Ready.")
 
 
-def remove(plan):
+def certificate_in_use(plan):
+    marker = ('/gokaskad-selfsigned/' if plan.get('certificate_type') == 'selfsigned' else '/live/') + plan['domain'] + '/'
+    dumps = []
+    if shutil.which('nginx'):
+        dumps.append(run(['nginx', '-T'], check=False))
+    if shutil.which('docker'):
+        containers = run(['docker', 'ps', '-q'], check=False).stdout.split()
+        for container in containers:
+            dumps.append(run(['docker', 'exec', container, 'nginx', '-T'], check=False))
+    return any(marker in dump.stdout + dump.stderr for dump in dumps)
+
+
+def remove_direct(plan, *, preserve_certificate=False):
+    hook = LE / 'renewal-hooks/deploy/gokaskad-panel'
+    if hook.exists() and '/opt/go-kaskad/config/proxy_setup.py renew' in hook.read_text():
+        hook.unlink()
+    if not preserve_certificate and plan.get('certificate_owned') and (LE / 'renewal' / (plan['domain'] + '.conf')).exists():
+        if certificate_in_use(plan):
+            print('Сертификат используется другим nginx и сохранён.')
+        else:
+            run([certbot_binary(), 'delete', '--non-interactive', '--cert-name', plan['domain']])
+    (ROOT / 'config/proxy.json').unlink(missing_ok=True)
+
+
+def remove(plan, *, preserve_certificate=False):
+    if plan['kind'] == 'direct':
+        remove_direct(plan, preserve_certificate=preserve_certificate)
+        return
     validate_paths(plan)
     conf = Path(plan['conf'])
     original = conf.read_text() if conf.exists() else ''
@@ -449,12 +512,16 @@ def remove(plan):
     hook = (LE / 'renewal-hooks/deploy/gokaskad-panel')
     if hook.exists() and '/opt/go-kaskad/config/proxy_setup.py renew' in hook.read_text():
         hook.unlink()
-    if plan.get('certificate_owned') and ((LE / 'renewal') / (plan['domain'] + '.conf')).exists():
+    if not preserve_certificate and plan.get('certificate_owned') and plan.get('certificate_type') != 'selfsigned' and ((LE / 'renewal') / (plan['domain'] + '.conf')).exists():
         dump = nginx(plan, '-T')
-        if f"/live/{plan['domain']}/" not in dump.stdout + dump.stderr:
+        if f"/live/{plan['domain']}/" not in dump.stdout + dump.stderr and not certificate_in_use(plan):
             run([certbot_binary(), 'delete', '--non-interactive', '--cert-name', plan['domain']])
         else:
             print('Сертификат используется другим блоком nginx и сохранён.')
+    if not preserve_certificate and plan.get('certificate_owned') and plan.get('certificate_type') == 'selfsigned':
+        dump = nginx(plan, '-T')
+        if str(certificate_source(plan)) not in dump.stdout + dump.stderr and not certificate_in_use(plan):
+            shutil.rmtree(certificate_source(plan), ignore_errors=True)
     if plan.get('webroot_owned'):
         # Do not remove someone else's later files in the webroot.
         for path in (Path(plan['webroot']) / '.well-known/acme-challenge', Path(plan['webroot']) / '.well-known', Path(plan['webroot'])):
@@ -472,6 +539,7 @@ def main():
     parser.add_argument('--domain')
     parser.add_argument('--port', type=int)
     parser.add_argument('--auth-file', type=Path)
+    parser.add_argument('--preserve-certificate', action='store_true')
     args = parser.parse_args()
     try:
         if args.command == 'domain':
@@ -486,15 +554,18 @@ def main():
         elif args.command == 'setup':
             setup(json.loads(args.plan.read_text()), args.domain, args.port, args.auth_file)
         else:
-            plan = json.loads((ROOT / 'config/proxy.json').read_text())
+            plan = json.loads((args.plan or (ROOT / 'config/proxy.json')).read_text())
             if args.command == 'resume':
+                if plan['kind'] == 'direct':
+                    raise SetupError('Для отдельного режима используйте пункт 3 меню / --change-mode.')
                 finish_setup(plan, args.auth_file)
             elif args.command == 'renew':
                 copy_certificate(plan)
-                nginx(plan, '-t')
-                nginx(plan, '-s', 'reload')
+                if plan['kind'] != 'direct':
+                    nginx(plan, '-t')
+                    nginx(plan, '-s', 'reload')
             else:
-                remove(plan)
+                remove(plan, preserve_certificate=args.preserve_certificate)
     except (SetupError, OSError, ValueError, subprocess.SubprocessError) as exc:
         # Command output may include configuration secrets. Do not dump nginx -T or certificate keys.
         print(f'Gokaskad: {exc}', file=sys.stderr)

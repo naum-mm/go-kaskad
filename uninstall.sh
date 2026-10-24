@@ -6,29 +6,59 @@ set -Eeuo pipefail
 docker() { command docker "$@" </dev/null; }
 [[ $EUID -eq 0 ]] || { echo 'Запустите через sudo bash. / Run with sudo bash.' >&2; exit 1; }
 purge=false
+keep=false
 case ${1:-} in
     '') ;;
     --remove-packages) purge=true ;;
-    *) echo 'Usage: sudo bash uninstall.sh [--remove-packages]' >&2; exit 2 ;;
+    --keep-config) keep=true ;;
+    *) echo 'Usage: sudo bash uninstall.sh [--keep-config|--remove-packages]' >&2; exit 2 ;;
 esac
 root=/opt/go-kaskad
 [[ -d $root && ! -L $root ]] || { echo 'Установка /opt/go-kaskad не найдена.' >&2; exit 1; }
 exec 9>"$root/install.lock"
 flock -n 9 || { echo 'Установка/удаление уже выполняется.' >&2; exit 1; }
-release=$(readlink -f "$root/current")
+if [[ -f $root/current/.env ]]; then
+    release=$(readlink -f "$root/current")
+elif [[ -f $root/saved/release ]]; then
+    release=$(cat "$root/saved/release")
+else
+    echo 'Не найдена установка или сохранённая конфигурация.' >&2; exit 1
+fi
 [[ $release == "$root/releases/"* && -f $release/compose.yaml && -f $release/.env ]] || {
     echo 'Не найден current/compose.yaml; файлы не удалены.' >&2; exit 1;
 }
 state="$root/install-state"
 if $purge && [[ ! -f $state/new-packages ]]; then
-    echo 'У этой старой установки нет списка установленных пакетов. Автоматическое удаление пакетов невозможно.' >&2
-    echo 'Запустите без --remove-packages для удаления приложения; общие системные пакеты будут сохранены.' >&2
-    exit 1
+    echo 'Нет манифеста добавленных пакетов: общие пакеты сохраняются, приложение будет удалено.' >&2
+    purge=false
 fi
 cd "$release"
+if $keep; then
+    install -d -m 700 "$root/saved"
+    cp -p .env "$root/saved/env"
+    printf '%s\n' "$release" >"$root/saved/release"
+    if [[ -f $root/config/proxy.json ]]; then cp -p "$root/config/proxy.json" "$root/saved/proxy.json"; fi
+    # Keep the database volume; also save a consistent portable snapshot.
+    docker compose exec -T worker python3 -c 'import sqlite3,sys; s=sqlite3.connect("file:/var/lib/gokaskad/rules.sqlite3?mode=ro",uri=True); d=sqlite3.connect(":memory:"); s.backup(d); sys.stdout.buffer.write(d.serialize())' >"$root/saved/rules.sqlite3"
+fi
 # Detach our domain before stopping the panel. Existing sites, hooks and networks stay.
 if [[ -f $root/config/proxy.json ]]; then
-    python3 "$root/config/proxy_setup.py" remove
+    if $keep; then
+        python3 "$root/config/proxy_setup.py" remove --preserve-certificate
+    else
+        python3 "$root/config/proxy_setup.py" remove
+    fi
+fi
+if ! $keep && [[ -f $root/saved/proxy.json && ! -f $root/config/proxy.json ]]; then
+    python3 "$root/config/proxy_setup.py" remove --plan "$root/saved/proxy.json"
+fi
+if ! $keep && [[ -f $root/config/retired-proxies.json ]]; then
+    python3 - "$root/config/retired-proxies.json" "$root/config/proxy_setup.py" <<'RETIRED'
+import importlib.util,json,sys
+spec=importlib.util.spec_from_file_location('proxy',sys.argv[2])
+module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+for plan in json.load(open(sys.argv[1])): module.remove(plan)
+RETIRED
 fi
 # Stop all writers before detaching rules or deleting the database.
 docker compose stop
@@ -52,7 +82,11 @@ for spec in 'nat PREROUTING GK_DNAT' 'nat POSTROUTING GK_SNAT' 'filter FORWARD G
         "$firewall" -w 5 -t "$table" -X "$chain"
     fi
 done
-docker compose down --volumes --rmi local --remove-orphans
+if $keep; then
+    docker compose down --rmi local --remove-orphans
+else
+    docker compose down --volumes --rmi local --remove-orphans
+fi
 remaining_containers=$(docker ps -aq)
 # Remove only images absent before installation, and never force shared images out.
 if [[ -f $state/new-images ]]; then
@@ -72,16 +106,15 @@ if $purge; then
     # System packages and Docker may now be used by other applications.
     if [[ -n $remaining_containers || -n $(docker volume ls -q) || -n $(docker image ls -aq) ||
           -n $(docker network ls --filter type=custom -q) ]]; then
-        echo 'Остались другие ресурсы Docker. Пакеты и install-state сохранены.' >&2
-        echo 'Удалите общие пакеты вручную после проверки; не удаляйте /var/lib/docker вслепую.' >&2
-        exit 1
+        echo 'Другие проекты используют Docker. Общие пакеты и Docker сохранены.' >&2
+        purge=false
     fi
     if compgen -G '/etc/letsencrypt/renewal/*.conf' >/dev/null; then
-        echo 'Остались другие сертификаты Let’s Encrypt. Пакеты и install-state сохранены для их продления.' >&2
-        exit 1
+        echo 'Другие сертификаты используют Certbot. Общие пакеты сохранены.' >&2
+        purge=false
     fi
     mapfile -t packages <"$state/new-packages"
-    if ((${#packages[@]})); then
+    if $purge && ((${#packages[@]})); then
         for package in "${packages[@]}"; do
             [[ $package =~ ^[a-z0-9][a-z0-9+.-]*(:[a-z0-9]+)?$ ]] || exit 1
         done
@@ -108,9 +141,15 @@ if [[ -f $state/ip-forward.before ]]; then
 else
     echo 'Старый установщик не сохранял прежнее значение IP forwarding; оно оставлено без изменений.'
 fi
+if $keep; then
+    rm -f "$root/current"
+    echo "Приложение удалено. Конфигурация, пароль, сертификаты и правила сохранены в $root и volume gokaskad_worker-data."
+    echo 'Для восстановления запустите меню установки.'
+    exit
+fi
 cd /
 rm -rf -- "$root"
 echo 'Gokaskad удалён: контейнеры, volume с БД, сети, образы приложения, правила и файлы.'
 if ! $purge; then
-    echo 'Общие системные пакеты и Docker сохранены. Режим --remove-packages выбирается вместо обычного удаления.'
+    echo 'Общие системные пакеты и Docker сохранены, если их используют другие проекты или нет манифеста установки.'
 fi

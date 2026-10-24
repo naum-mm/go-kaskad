@@ -216,6 +216,15 @@ networks:
             p.remove(state)
             assert conf.read_text() == original + '# website edit after install\n'
             site_ok()
+            # Self-signed SNI must still verify the upstream name and pinned CA.
+            selfsigned_plan = dict(plan, certificate_type='selfsigned')
+            p.setup(selfsigned_plan, domain, local_port, None)
+            p.wait_http(f'https://{domain}/api/health', domain, 401, ca_file=root / 'config/tls/server.crt')
+            p.wait_http(f'https://{domain}/api/health', domain, 200, token='"ready": true',
+                        auth_file=authfile, ca_file=root / 'config/tls/server.crt')
+            site_ok()
+            p.remove(json.loads((root / 'config/proxy.json').read_text()))
+            site_ok()
         print('PASS: real HTTP-01 webroot, SNI sites, verified TLS, authentication, certificate rotation, recreation and domain cleanup')
     except Exception:
         logs = subprocess.run(['docker', 'logs', '--tail', '30', outer], capture_output=True, text=True)

@@ -24,33 +24,55 @@ Docker Compose, если их ещё нет.
 curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh | sudo bash
 ```
 
-Установщик сам определяет окружение и задаёт **два вопроса**:
+Установщик покажет найденную установку, работающие сервисы, контейнеры и занятые
+TCP/UDP-порты, затем предложит меню:
 
-- **На свободном сервере:** пароль администратора и порт панели (по умолчанию `8443`).
-- **Если HTTPS уже обслуживает nginx:** домен панели и пароль администратора.
+```text
+1 — Отдельная установка на выбранном порту
+2 — Домен на 443 через существующий nginx / SNI
+3 — Обновление, переустановка или смена режима
+4 — Удаление с сохранением настроек или полностью
+0 — Выход
+```
 
-Пароль — от 12 символов, до 72 байт. Логин: **`admin`**.
-На свободном сервере откройте `https://IP-сервера:ПОРТ`; установщик выведет отпечаток
-самоподписанного сертификата. Разрешите выбранный порт в firewall провайдера.
+В пунктах 1 и 2 выбирается сертификат: **самоподписанный** или **Let’s Encrypt
+через Certbot + домен**. Для SNI домен нужен в обоих случаях. Пароль спрашивается
+только при первой установке; при обновлении и восстановлении он сохраняется.
+Логин: **`admin`**. Пароль — от 12 символов, до 72 байт.
 
-### Установка рядом с существующим сайтом
+### Два режима работы
 
-Используйте **ту же команду установки**. Сначала направьте DNS домена панели
-на этот VPS. Порты 80/443 должны быть доступны для проверки Let’s Encrypt.
+| Режим | Адрес панели | Что нужно |
+|---|---|---|
+| Отдельный порт | `https://IP:ПОРТ` или `https://домен:ПОРТ` | Свободный порт; для Certbot также домен и свободный TCP 80 |
+| Существующий nginx / SNI | `https://домен` | nginx на 80/443, DNS домена на VPS |
 
-Установщик добавит домен в существующий nginx, выпустит сертификат через Certbot
-на хосте и настроит продление. Nginx выберет сертификат по **SNI** и направит запрос
-в блок нужного домена. Сайты продолжат работать на своих доменах.
+Самоподписанный сертификат вызывает предупреждение браузера: сверьте отпечаток,
+выведенный установщиком, и добавьте сертификат в доверенные. Let’s Encrypt требует
+доступного снаружи TCP 80 и правильных DNS A/AAAA; выпуск и продление выполняются
+Certbot на хосте. Дополнительные вопросы Certbot отключены.
 
-Панель привязывается к loopback; для nginx в Docker автоматически подключается
-общая сеть. API и база остаются внутренними. TCP-порты 80/443 зарезервированы:
-создать перенаправление на них в панели нельзя. Настройки сохраняются при обновлении.
+В SNI-режиме существующий nginx выбирает сертификат домена и направляет запросы
+к панели. Другие сайты сохраняются. Порт панели привязан к loopback, только её nginx
+подключается к общей Docker-сети. API и база остаются внутренними; TCP 80/443
+зарезервированы от правил форварда. Проверка TLS между nginx остаётся включённой.
 
-Поддерживаются nginx на хосте и Docker nginx с доступными через bind mount
-конфигурацией, ACME webroot и `/etc/letsencrypt`. Для неизвестной конфигурации
-установщик остановится с объяснением. Отдельный HAProxy для панели не требуется.
+Поддерживаются nginx на хосте и Docker nginx с bind mount конфигурации, каталога
+сертификатов `/etc/letsencrypt` и ACME webroot. Неизвестные proxy автоматически
+не переписываются; установщик объяснит причину остановки. HAProxy для панели не нужен.
 
-[Подробности, продолжение после ошибки и ручной режим](docs/web.ru.md#домен-в-существующем-nginx)
+### Обновление и смена режима
+
+Пункт **3** позволяет обновить код, пересоздать контейнеры или изменить режим,
+порт и сертификат — например, перейти с `8443` и self-signed на `443` через SNI
+и Certbot. Старую установку перед сменой режима скрипт обновит сам.
+
+Перед операцией сохраняются конфигурация, сертификат и согласованная копия БД
+в `/root/gokaskad-backups`. Пароль и правила сохраняются. Если новый режим
+настроить не удалось, скрипт пытается восстановить предыдущую конфигурацию.
+При перезапуске контейнеров возможен краткий перерыв перенаправлений.
+
+[Подробная инструкция](docs/web.ru.md) · [Режимы и сертификаты](docs/proxy.en.md)
 
 ### Как устроено
 
@@ -75,34 +97,17 @@ OpenBSD-скрипт остаётся отдельным CLI, веб-панел�
 
 ### Удаление с сервера
 
-**Удаляются все правила панели, база данных, пароль и сертификат. Восстановление
-возможно только из вашей резервной копии.**
+Запустите ту же команду установки и выберите **пункт 4**:
 
-```bash
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/uninstall.sh | sudo bash
-```
+- **Сохранить настройки:** удаляются контейнеры и правила firewall Gokaskad;
+  пароль, сертификат, конфигурация и volume БД остаются для восстановления.
+  При следующей установке используется прежний пароль и база правил.
+- **Удалить полностью:** удаляются контейнеры, volume БД, свои правила,
+  файлы проекта и добавленные неиспользуемые пакеты. Требуется подтверждение `DELETE`.
 
-Скрипт остановит контейнеры и удалит их вместе с volume базы, сетями, образами
-приложения, цепочками `GK_*`, настройкой Gokaskad в sysctl и каталогом
-`/opt/go-kaskad`. При автоматическом подключении домена также удаляются свой блок
-nginx и hook продления. Созданный установщиком сертификат удаляется, если его не
-используют другие блоки nginx. Общие сети, таймер Certbot и чужие настройки сохраняются.
-Общие пакеты системы и Docker останутся.
-
-Для новой установки, которая сохранила список добавленных пакетов, вместо
-обычного удаления можно выбрать полную очистку:
-
-```bash
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/uninstall.sh | sudo bash -s -- --remove-packages
-```
-
-Этот режим дополнительно удалит только пакеты, которых не было до установки.
-Если Docker используется другими приложениями или удаление затрагивает чужие
-пакеты, очистка пакетов остановится и сохранит список в `install-state`.
-Общий кэш сборки Docker не очищается: он может использоваться другими проектами.
-Для старых установок список пакетов и прежнее значение IP forwarding неизвестны;
-скрипт не угадывает их. Приложение удаляется обычной командой, а общие пакеты можно
-проверить по `/var/log/apt/history.log` и удалить отдельно, если они больше не нужны.
+Общий Docker, пакеты и сертификаты, необходимые другим проектам, сохраняются.
+Чужие сайты, сети и firewall не очищаются. Резервные копии в
+`/root/gokaskad-backups` сохраняются отдельно; удалите их вручную, если они больше не нужны.
 
 ## English
 
@@ -126,33 +131,54 @@ Docker Compose if they are missing.
 curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh | sudo bash
 ```
 
-The installer detects the environment and asks **two questions**:
+The installer displays the existing installation, running services, containers
+and occupied TCP/UDP ports, then opens a menu:
 
-- **A standalone server:** administrator password and panel port (default `8443`).
-- **An existing nginx on HTTPS:** panel domain and administrator password.
+```text
+1 — Install on a separate port
+2 — Domain on port 443 through existing nginx / SNI
+3 — Update, reinstall containers, or change operating mode
+4 — Remove while keeping settings, or remove fully
+0 — Exit
+```
 
-Passwords must be at least 12 characters and at most 72 bytes. Username: **`admin`**.
-For a standalone installation, open `https://SERVER-IP:PORT`, verify the printed
-self-signed certificate fingerprint, and allow the panel port in your provider firewall.
+Options 1 and 2 offer **self-signed** or **Let’s Encrypt / Certbot** certificates.
+SNI requires a domain with either certificate type. The password is requested
+only on first installation; updates and restoration preserve it. Username:
+**`admin`**. Passwords must be at least 12 characters and at most 72 bytes.
 
-### Install alongside an existing website
+### Two operating modes
 
-Use **the same installation command**. Point the panel domain's DNS to this VPS
-first. Ports 80/443 must be reachable for Let’s Encrypt validation.
+| Mode | Panel URL | Requirements |
+|---|---|---|
+| Separate port | `https://IP:PORT` or `https://domain:PORT` | A free panel port; Certbot also needs a domain and free TCP 80 |
+| Existing nginx / SNI | `https://domain` | Existing nginx on 80/443 and DNS pointing to the VPS |
 
-The installer adds the domain to your existing nginx, obtains a certificate using
-Certbot on the host, and sets up renewal. Nginx uses **SNI** to select the certificate
-and routes requests to the matching domain. Existing sites keep their domains.
+Self-signed certificates trigger a browser warning: verify the printed fingerprint
+and trust the certificate. Let’s Encrypt requires public TCP 80 and correct DNS
+A/AAAA records. Certbot runs and renews on the host without extra interactive prompts.
 
-The panel binds to loopback. For Docker nginx, a shared network is configured
-automatically. The API and database stay internal. TCP ports 80/443 are reserved
-and cannot be used by panel forwarding rules. Settings persist when updating.
+In SNI mode, nginx selects the domain certificate and routes requests to the panel.
+Other sites are preserved. The panel binds to loopback; only its nginx joins the
+existing Docker network. The API/database stay internal and TCP ports 80/443 are
+reserved from forwarding rules. Upstream TLS verification remains enabled.
 
-Supported: host nginx, or Docker nginx with bind-mounted configuration, ACME
-webroot and `/etc/letsencrypt`. Unrecognized configurations stop with an explanation.
-A separate HAProxy is not needed for the panel.
+Supported: host nginx, or Docker nginx with bind-mounted configuration,
+`/etc/letsencrypt` and ACME webroot. Unrecognized proxy layouts stop with an
+explanation instead of being overwritten. HAProxy is not required for the panel.
 
-[Domain setup, recovery and manual mode](docs/proxy.en.md)
+### Updates and mode changes
+
+Menu option **3** updates code, recreates containers, or changes mode, port and
+certificate type—for example, self-signed HTTPS on 8443 to SNI/Certbot on 443.
+Older code is upgraded automatically before a mode change.
+
+Configuration, certificates and a consistent database snapshot are backed up
+under `/root/gokaskad-backups`. Password and rules are preserved. Failed mode
+changes attempt to restore the previous configuration. Container restarts may
+briefly interrupt forwarding.
+
+[Modes, certificates, recovery and automation](docs/proxy.en.md)
 
 ### How it works
 
@@ -176,28 +202,13 @@ requires Linux.
 
 ### Uninstall
 
-**This deletes the panel's rules, database, password, and certificate. You need
-your own backup to restore them.**
+Run the same installer command and choose **option 4**:
 
-```bash
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/uninstall.sh | sudo bash
-```
+- **Keep settings:** removes containers and Gokaskad firewall rules; retains the
+  password, certificates, configuration and database volume for restoration.
+- **Full removal:** deletes project containers, database volumes, firewall rules,
+  project files and introduced unused packages. Requires typing `DELETE`.
 
-Removes containers, the database volume, project networks and application images,
-`GK_*` firewall chains, the project's sysctl setting, and `/opt/go-kaskad`.
-Automatic domain integration also removes its nginx block and renewal hook.
-An installer-created certificate is deleted if no other nginx block references it.
-Shared networks, the Certbot timer, other sites and system packages remain.
-
-For a new installation with a saved package manifest, choose this instead to
-also remove packages introduced by the installer:
-
-```bash
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/uninstall.sh | sudo bash -s -- --remove-packages
-```
-
-Package removal stops if other Docker resources remain or unrelated packages
-would be removed. Shared Docker build cache is preserved. Older installations
-did not record their package baseline or original IP forwarding value: use the
-regular uninstall command, then review `/var/log/apt/history.log` before removing
-any shared packages manually.
+Shared Docker, packages and certificates needed by other projects are kept.
+Other sites, networks and firewall rules are preserved. Backups in
+`/root/gokaskad-backups` remain separate; remove them manually when no longer needed.

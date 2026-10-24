@@ -14,9 +14,9 @@ jobs:
       - name: Unit and syntax checks
         run: |
           python3 -m unittest discover -s tests -v
-          bash -n install.sh gokaskad.sh
+          bash -n install.sh tools/menu.sh tools/install_core.sh gokaskad.sh
           bash -n uninstall.sh
-          python3 -m py_compile tools/proxy_setup.py
+          python3 -m py_compile tools/proxy_setup.py tools/lifecycle.py
           sh -n gokaskad-openbsd.sh
           node --check web/gui/app.js
           python3 tools/build_preview.py
@@ -28,7 +28,7 @@ jobs:
             python:3.13-slim-bookworm python3 /src/tests/uninstall_smoke.py
       - name: Installer recovery and integration cleanup in disposable filesystem
         run: |
-          docker run --rm --network none --read-only --tmpfs /tmp:exec --tmpfs /opt --tmpfs /etc/sysctl.d --tmpfs /etc/letsencrypt \
+          docker run --rm --network none --read-only --tmpfs /tmp:exec --tmpfs /opt --tmpfs /etc/sysctl.d --tmpfs /etc/letsencrypt --tmpfs /root \
             -e GOKASKAD_INSTALL_TEST_CONTAINER=1 -v "$PWD:/src:ro" \
             python:3.13-slim-bookworm python3 /src/tests/install_smoke.py
       - name: Prepare test-only credentials and certificate
