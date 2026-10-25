@@ -182,7 +182,7 @@ class InstallerTests(unittest.TestCase):
         LOG.write_text('')
         result=self.install('--configure-domain',PANEL_DOMAIN='')
         self.assertNotEqual(result.returncode,0)
-        self.assertIn('Сначала обновите Gokaskad',result.stderr)
+        self.assertIn('Сначала обновите Kaskad',result.stderr)
         self.assertEqual(LOG.read_text(),'')
         self.assertNotIn('Домен панели',result.stdout+result.stderr)
 

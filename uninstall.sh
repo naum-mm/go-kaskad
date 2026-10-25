@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Remove Gokaskad resources only. Optional package removal requires an install manifest.
+# Remove Kaskad resources only. Optional package removal requires an install manifest.
 set -Eeuo pipefail
 # bash may be reading this script from curl or a heredoc. Docker must not
 # consume the remaining installer commands as its interactive stdin.
@@ -149,7 +149,7 @@ if $keep; then
 fi
 cd /
 rm -rf -- "$root"
-echo 'Gokaskad удалён: контейнеры, volume с БД, сети, образы приложения, правила и файлы.'
+echo 'Kaskad удалён: контейнеры, volume с БД, сети, образы приложения, правила и файлы.'
 if ! $purge; then
     echo 'Общие системные пакеты и Docker сохранены, если их используют другие проекты или нет манифеста установки.'
 fi

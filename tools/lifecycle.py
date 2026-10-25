@@ -144,7 +144,7 @@ def direct_certificate(domain, certificate_type, port, previous):
             if 'inet' in words:
                 san += ',IP:' + words[words.index('inet') + 1].split('/')[0]
         proxy.run(['openssl', 'req', '-x509', '-newkey', 'rsa:3072', '-sha256', '-nodes', '-days', '365',
-                   '-subj', '/CN=Gokaskad', '-addext', 'subjectAltName=' + san,
+                   '-subj', '/CN=Kaskad', '-addext', 'subjectAltName=' + san,
                    '-keyout', str(ROOT / 'config/tls/server.key'), '-out', str(ROOT / 'config/tls/server.crt')])
         compose('exec', '-T', 'nginx', 'nginx', '-t')
         compose('exec', '-T', 'nginx', 'nginx', '-s', 'reload')
@@ -323,7 +323,7 @@ def main():
             else:
                 change(args.mode, args.certificate, args.domain, args.port)
     except (OSError, ValueError, proxy.SetupError, subprocess.SubprocessError) as exc:
-        print(f'Gokaskad: {exc}', file=sys.stderr)
+        print(f'Kaskad: {exc}', file=sys.stderr)
         return 1
     return 0
 

@@ -13,7 +13,7 @@
 Установка на Debian/Ubuntu выполняется одной командой:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh | sudo bash
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/kaskad/main/install.sh | sudo bash
 ```
 
 Запускайте на Linux-сервере, который будет пересылать трафик, с root-доступом,
@@ -41,7 +41,7 @@ TLS-файлы можно заменить без изменения парол�
    дополнительно нужен свободный и доступный снаружи TCP 80.
 2. **Существующий nginx / SNI:** домен на общем 443, self-signed или Certbot.
    Домен нужен в обоих случаях. Локальный порт выбирается автоматически.
-3. **Установленный Gokaskad:** обновить код; пересоздать контейнеры с сохранением
+3. **Установленный Kaskad:** обновить код; пересоздать контейнеры с сохранением
    данных; обновить и изменить режим, порт и сертификат. Старый код перед
    сменой режима обновляется автоматически.
 4. **Удаление:** сохранить настройки и правила для восстановления либо удалить
@@ -64,7 +64,7 @@ HAProxy автоматически не настраивается; MASQUE — �
 ```text
 Браузер → существующий nginx :443 (SNI / server_name)
              ├── существующие сайты
-             └── домен панели → nginx Gokaskad (HTTPS + пароль) → GUI / API
+             └── домен панели → nginx Kaskad (HTTPS + пароль) → GUI / API
 ```
 
 Только nginx панели подключается к сети существующего сайта. API остаётся в
@@ -154,7 +154,7 @@ Worker последовательно применяет изменения, з�
 При старте worker восстанавливает правила из БД. Включение IP forwarding сохраняется
 в `/etc/sysctl.d/90-gokaskad.conf`; BBR и глобальные firewall-политики установщик
 не меняет. После перезапуска Docker при изменении его цепочек перезапустите worker,
-чтобы проверить/восстановить переходы в цепочки Gokaskad.
+чтобы проверить/восстановить переходы в цепочки Kaskad.
 
 ### Управление и данные
 
@@ -179,6 +179,60 @@ sudo docker compose restart worker
 и после проверки переключите симлинк `current`. Compose project name и volumes
 остаются прежними; заранее сделайте резервную копию. Сертификаты обновляются отдельно.
 
+### Обновление до v1.0.0 — Каскад
+
+Новое название проекта — «Каскад» / Kaskad. Репозиторий переименован в
+[`naum-mm/kaskad`](https://github.com/naum-mm/kaskad). Панель показывает версию
+`v1.0.0`; функциональность и формат базы правил сохраняются.
+
+На сервере с существующей установкой выполните:
+
+```bash
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/kaskad/main/install.sh | sudo bash -s -- --update
+```
+
+Команда устанавливает актуальный `main`, сохраняет пароль, правила, порт,
+сертификаты и режим доступа. Перед обновлением создаётся согласованная копия БД
+и конфигурации в `/root/gokaskad-backups`; сохраните путь из вывода установщика.
+При пересоздании сервисов возможен краткий перерыв перенаправлений.
+
+**Переименование не требует перемещения файлов и volumes.** Для новой и существующей
+установки по-прежнему используются `/opt/go-kaskad`, Compose project `gokaskad`,
+volume БД `gokaskad_worker-data`, CLI `gokaskad.sh`, переменные `GOKASKAD_*`,
+сокет `/run/gokaskad/worker.sock` и существующие цепочки firewall/маркеры nginx.
+Это сохранённые технические имена для совместимости. Не переименовывайте их вручную,
+не меняйте Compose project name и не выполняйте `docker compose down -v`.
+Новые переменные `.env` и миграция SQLite не нужны.
+
+После успешного обновления проверьте сервисы:
+
+```bash
+cd /opt/go-kaskad/current
+sudo docker compose ps
+sudo docker compose exec -T nginx nginx -t
+```
+
+API и worker должны быть `healthy`, nginx — пройти проверку. Откройте прежний
+адрес панели, выполните `Ctrl+Shift+R` (`Cmd+Shift+R` на Mac) и проверьте название
+KASKAD, версию `v1.0.0`, подключение worker, сохранённые правила и действующие
+перенаправления. После смены названия области HTTP-аутентификации браузер может
+повторно запросить прежние логин `admin` и пароль.
+
+Если обновление завершилось ошибкой, установщик пытается запустить предыдущий
+release. Сохраните резервную копию и предыдущий release; проверьте вывод и логи:
+
+```bash
+cd /opt/go-kaskad/current
+sudo docker compose logs --tail=100 nginx gui api worker
+```
+
+Для локального Git checkout обновите remote после переименования:
+
+```bash
+git remote set-url origin git@github.com:naum-mm/kaskad.git
+git fetch origin --tags
+```
+
 ### Обновление до v0.1.0 — дизайн BOX4ONE
 
 Релиз переносит визуальный стиль BOX4ONE в панель: нейтральные поверхности,
@@ -190,7 +244,7 @@ sudo docker compose restart worker
 Для существующей установки выполните на Linux-сервере:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh | sudo bash -s -- --update
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/kaskad/main/install.sh | sudo bash -s -- --update
 ```
 
 Команда обновляет до актуальной версии `main` (после публикации этого релиза —
@@ -231,7 +285,7 @@ sudo docker compose logs --tail=100 nginx gui api worker
 Рекомендуется пункт 3 меню или команда без дополнительных вопросов:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh | sudo bash -s -- --update
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/kaskad/main/install.sh | sudo bash -s -- --update
 ```
 
 Она сохраняет текущий режим, делает резервную копию БД и при неудаче пытается
@@ -252,7 +306,7 @@ set -euo pipefail
 root=/opt/go-kaskad
 test -f "$root/current/.env"
 release=$(mktemp -d "$root/releases/update.XXXXXX")
-curl --proto '=https' --tlsv1.2 -fsSL https://codeload.github.com/naum-mm/go-kaskad/tar.gz/refs/heads/main |
+curl --proto '=https' --tlsv1.2 -fsSL https://codeload.github.com/naum-mm/kaskad/tar.gz/refs/heads/main |
   tar -xz --strip-components=1 -C "$release"
 cp -p "$root/current/.env" "$release/.env"
 if [ -f "$root/config/proxy.json" ]; then

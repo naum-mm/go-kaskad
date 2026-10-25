@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
-  <title>Gokaskad · Демо / Demo</title>
-  <style>/* BOX4ONE visual language, adapted to the Gokaskad control panel. */
+  <title>Каскад · Демо / Demo</title>
+  <style>/* BOX4ONE visual language, adapted to the Kaskad control panel. */
 :root {
   color-scheme: light dark;
   --background: #ffffff;
@@ -218,12 +218,16 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--purple) 
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition: none !important; }
 }
+
+.brand-group { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.version { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 600px) { .brand-group { gap: 8px; } .version { font-size: 9px; } }
 </style>
 </head>
 <body>
   <main><p class="demo-note">ДЕМО / DEMO · Примеры правил, без подключения к серверу. / Sample rules, no server connection.</p>
     <header id="top">
-      <a class="brand" href="#top" aria-label="Gokaskad — главная">G<span>O</span>KASKAD</a>
+      <div class="brand-group"><a class="brand" href="#top" aria-label="Каскад — главная">K<span>A</span>SKAD</a><span class="version" aria-label="Версия 1.0.0">v1.0.0</span></div>
       <span id="connection" class="badge">Подключение…</span>
     </header>
 

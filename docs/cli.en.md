@@ -6,7 +6,7 @@ This guide describes the original interactive CLI. Its `--flush` command clears 
 
 ## Description
 
-Gokaskad is a comprehensive bash script for configuring port forwarding (cascading/proxy) on Linux servers. It creates network bridges between clients and destination servers using iptables NAT rules. The script is designed for system administrators who need to set up transparent proxying or traffic redirection through a middle server.
+Kaskad is a comprehensive bash script for configuring port forwarding (cascading/proxy) on Linux servers. It creates network bridges between clients and destination servers using iptables NAT rules. The script is designed for system administrators who need to set up transparent proxying or traffic redirection through a middle server.
 
 ## How It Works
 
@@ -128,7 +128,7 @@ Here's how to use each one:
 
 ```bash
 ======================================================
-       GOKASKAD - Port Forwarding Tool
+       KASKAD - Port Forwarding Tool
 ======================================================
 
 Available actions:

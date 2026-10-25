@@ -24,7 +24,7 @@ fi
 if [[ $action == remove || $action == purge ]]; then
     if [[ ${GOKASKAD_CONFIRM:-} != YES ]]; then
         if [[ $action == purge ]]; then
-            ask 'Будут удалены правила, пароль и файлы Gokaskad. Введите DELETE: '
+            ask 'Будут удалены правила, пароль и файлы Kaskad. Введите DELETE: '
             [[ $answer == DELETE ]] || exit 1
         else
             ask 'Остановить и удалить приложение, сохранив настройки и правила? [y/N]: '

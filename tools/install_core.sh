@@ -32,10 +32,10 @@ if ! $configure && [[ -e $root/current ]]; then
     exit 1
 fi
 if $configure; then
-    [[ -f $root/current/.env ]] || { echo 'Сначала установите Gokaskad.' >&2; exit 1; }
+    [[ -f $root/current/.env ]] || { echo 'Сначала установите Kaskad.' >&2; exit 1; }
     if ! $resume; then
         grep -q RESERVED_TCP_PORTS "$root/current/compose.yaml" || {
-            echo 'Сначала обновите Gokaskad по инструкции README.' >&2; exit 1;
+            echo 'Сначала обновите Kaskad по инструкции README.' >&2; exit 1;
         }
     fi
 fi
@@ -88,7 +88,7 @@ if [[ -n ${GOKASKAD_SOURCE_DIR:-} ]]; then
     cp -a "$GOKASKAD_SOURCE_DIR/." "$work/source/"
 else
     curl --fail --show-error --silent --location --proto '=https' --tlsv1.2 \
-        https://codeload.github.com/naum-mm/go-kaskad/tar.gz/refs/heads/main -o "$work/source.tar.gz" </dev/null
+        https://codeload.github.com/naum-mm/kaskad/tar.gz/refs/heads/main -o "$work/source.tar.gz" </dev/null
     tar -xzf "$work/source.tar.gz" --strip-components=1 -C "$work/source"
 fi
 [[ -f $work/source/compose.yaml && -f $work/source/web/worker/firewall.py ]] || {
@@ -233,7 +233,7 @@ while read -r address; do san+=",IP:$address"; done < <(ip -o -4 addr show scope
 if ! $restore || [[ ! -f $root/config/tls/server.crt ]]; then
     openssl req -x509 -newkey rsa:3072 -sha256 -nodes -days 365 \
         -keyout "$root/config/tls/server.key" -out "$root/config/tls/server.crt" \
-        -subj '/CN=Gokaskad' -addext "subjectAltName=$san" >/dev/null 2>&1
+        -subj '/CN=Kaskad' -addext "subjectAltName=$san" >/dev/null 2>&1
 fi
 backend=legacy
 if iptables --version | grep -q nf_tables; then backend=nft; fi

@@ -1,12 +1,12 @@
-# Gokaskad
+# Каскад / Kaskad
 
 [Русский](#русский) · [English](#english)
 
 ## Русский
 
-**Релиз v0.1.0:** дизайн BOX4ONE, автоматическая светлая/тёмная тема и обновлённая мобильная вёрстка. [Обновление существующей установки](docs/web.ru.md#обновление-до-v010--дизайн-box4one) · [История изменений](CHANGELOG.md).
+**Релиз v1.0.0:** проект называется «Каскад», репозиторий — `naum-mm/kaskad`. [Обновление существующей установки](docs/web.ru.md#обновление-до-v100--каскад) · [История изменений](CHANGELOG.md).
 
-**Gokaskad — простая веб-панель для перенаправления TCP/UDP-портов на Linux-сервере.**
+**Каскад — простая веб-панель для перенаправления TCP/UDP-портов на Linux-сервере.**
 
 Например: соединение с портом `8080` вашего сервера отправляется на
 `192.0.2.10:80`. Правила можно создавать, изменять, включать, выключать и удалять
@@ -23,7 +23,7 @@
 Docker Compose, если их ещё нет.
 
 ```bash
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh | sudo bash
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/kaskad/main/install.sh | sudo bash
 ```
 
 Установщик покажет найденную установку, работающие сервисы, контейнеры и занятые
@@ -93,7 +93,7 @@ OpenBSD-скрипт остаётся отдельным CLI, веб-панел�
 
 ### Посмотреть макет без установки
 
-![Макет панели Gokaskad](docs/panel-preview.png)
+![Макет панели Kaskad](docs/panel-preview.png)
 
 [Мобильный вид](docs/panel-mobile.png) · [Скачать автономный HTML-макет](docs/preview.html)
 
@@ -101,7 +101,7 @@ OpenBSD-скрипт остаётся отдельным CLI, веб-панел�
 
 Запустите ту же команду установки и выберите **пункт 4**:
 
-- **Сохранить настройки:** удаляются контейнеры и правила firewall Gokaskad;
+- **Сохранить настройки:** удаляются контейнеры и правила firewall Kaskad;
   пароль, сертификат, конфигурация и volume БД остаются для восстановления.
   При следующей установке используется прежний пароль и база правил.
 - **Удалить полностью:** удаляются контейнеры, volume БД, свои правила,
@@ -113,9 +113,9 @@ OpenBSD-скрипт остаётся отдельным CLI, веб-панел�
 
 ## English
 
-**Release v0.1.0:** BOX4ONE styling, automatic light/dark appearance and refreshed mobile layout. [Changelog](CHANGELOG.md) · [Upgrade an existing installation](docs/proxy.en.md#upgrading-to-v010).
+**Release v1.0.0:** renamed to Kaskad, with the repository at `naum-mm/kaskad`. [Changelog](CHANGELOG.md) · [Upgrade an existing installation](docs/proxy.en.md#upgrading-to-v100).
 
-**Gokaskad is a simple web panel for forwarding TCP/UDP ports on a Linux server.**
+**Kaskad is a simple web panel for forwarding TCP/UDP ports on a Linux server.**
 
 For example, a connection to port `8080` on your server is forwarded to
 `192.0.2.10:80`. Create, edit, enable, disable, and delete rules in your browser.
@@ -132,7 +132,7 @@ Use a Debian/Ubuntu server with root access. The installer installs Docker and
 Docker Compose if they are missing.
 
 ```bash
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh | sudo bash
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/kaskad/main/install.sh | sudo bash
 ```
 
 The installer displays the existing installation, running services, containers
@@ -208,7 +208,7 @@ requires Linux.
 
 Run the same installer command and choose **option 4**:
 
-- **Keep settings:** removes containers and Gokaskad firewall rules; retains the
+- **Keep settings:** removes containers and Kaskad firewall rules; retains the
   password, certificates, configuration and database volume for restoration.
 - **Full removal:** deletes project containers, database volumes, firewall rules,
   project files and introduced unused packages. Requires typing `DELETE`.

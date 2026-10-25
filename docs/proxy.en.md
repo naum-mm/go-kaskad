@@ -3,7 +3,7 @@
 Run one command for installation, updates, migrations and removal:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh | sudo bash
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/kaskad/main/install.sh | sudo bash
 ```
 
 Before changing anything, the menu shows the existing installation, current mode
@@ -36,7 +36,7 @@ bind-mounted ACME webroot and `/etc/letsencrypt:/etc/letsencrypt`, published por
 virtual hosts are not overwritten. External HAProxy detection is not supported;
 HAProxy is not installed by this menu. MASQUE is a separate service.
 
-Only the Gokaskad nginx joins the existing website network. API stays in `control`
+Only the Kaskad nginx joins the existing website network. API stays in `control`
 and SQLite has no network port. The existing nginx selects a certificate using
 TLS SNI, then routes requests by domain. Original sites keep their configuration.
 
@@ -124,7 +124,7 @@ no rule migration or new environment variables are needed.
 Run on the existing Linux server:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh | sudo bash -s -- --update
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/kaskad/main/install.sh | sudo bash -s -- --update
 ```
 
 This installs the latest `main`, including v0.1.0 once merged, and any subsequent
@@ -149,3 +149,42 @@ Appearance follows the device's light/dark setting.
 On failure the updater attempts to restart the previous release. Check its output
 and service health; retain the previous release and backup. Inspect logs with
 `sudo docker compose logs --tail=100 nginx gui api worker` from the current directory.
+
+
+## Upgrading to v1.0.0
+
+The product is now Kaskad and the repository is `naum-mm/kaskad`. Run on the
+existing Linux server:
+
+```bash
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/kaskad/main/install.sh | sudo bash -s -- --update
+```
+
+The updater installs the latest main, first backing up configuration and a consistent
+SQLite snapshot under `/root/gokaskad-backups`. It keeps credentials, rules, port,
+mode and certificates. Forwarding may briefly pause during service recreation.
+No database migration or new environment variables are required.
+
+Compatibility identifiers are intentionally retained: `/opt/go-kaskad`, Compose
+project `gokaskad`, volume `gokaskad_worker-data`, CLI filenames, Unix socket,
+firewall chains, nginx ownership markers, Certbot hooks and `GOKASKAD_*` variables.
+Do not rename these manually or run `docker compose down -v`.
+
+```bash
+cd /opt/go-kaskad/current
+sudo docker compose ps
+sudo docker compose exec -T nginx nginx -t
+```
+
+Confirm API/worker health, nginx validation and existing forwarding. Hard-refresh
+the existing panel URL and verify KASKAD v1.0.0 and your rules. The renamed HTTP
+authentication realm may prompt for the same admin username/password again.
+On update failure the updater attempts to restart the previous release; retain
+that release and the backup, and inspect `docker compose logs --tail=100 nginx gui api worker`.
+
+For local Git checkouts after the repository rename:
+
+```bash
+git remote set-url origin git@github.com:naum-mm/kaskad.git
+git fetch origin --tags
+```

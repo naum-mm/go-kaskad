@@ -240,7 +240,7 @@ install_autostart() {
     # Create systemd service
     cat > "$SERVICE_FILE" << EOF
 [Unit]
-Description=Gokaskad Port Forwarding Service
+Description=Kaskad Port Forwarding Service
 After=network.target
 
 [Service]
@@ -647,7 +647,7 @@ show_menu() {
         clear
         echo -e "${CYAN}"
         echo "======================================================"
-        echo "       GOKASKAD - Port Forwarding Tool"
+        echo "       KASKAD - Port Forwarding Tool"
         echo "======================================================"
         echo -e "${NC}"
         
@@ -707,7 +707,7 @@ case "$1" in
         exit 0
         ;;
     --help)
-        echo "Gokaskad Port Forwarding Tool"
+        echo "Kaskad Port Forwarding Tool"
         echo ""
         echo "Usage: gokaskad [OPTION]"
         echo ""

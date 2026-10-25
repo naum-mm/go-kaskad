@@ -38,7 +38,7 @@ html = html.replace('<link rel="stylesheet" href="/style.css"><script src="/app.
 html = html.replace('<main>', '<main><p class="demo-note">ДЕМО / DEMO · Примеры правил, без подключения к серверу. / Sample rules, no server connection.</p>')
 html = html.replace('class="brand" href="/"', 'class="brand" href="#top"')
 html = html.replace('</body>', '<script>' + script + '</script></body>')
-html = html.replace('<title>Gokaskad · Управление трафиком</title>', '<title>Gokaskad · Демо / Demo</title>')
+html = html.replace('<title>Каскад · Управление трафиком</title>', '<title>Каскад · Демо / Demo</title>')
 target = root / "docs/preview.html"
 target.write_text(html)
 print(target)

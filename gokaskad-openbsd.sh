@@ -456,7 +456,7 @@ show_menu() {
         clear
         echo -e "${CYAN}"
         echo "======================================================"
-        echo "       GOKASKAD - Port Forwarding Tool (OpenBSD/PF)"
+        echo "       KASKAD - Port Forwarding Tool (OpenBSD/PF)"
         echo "======================================================"
         echo -e "${NC}"
         

@@ -1,4 +1,4 @@
-/* BOX4ONE visual language, adapted to the Gokaskad control panel. */
+/* BOX4ONE visual language, adapted to the Kaskad control panel. */
 :root {
   color-scheme: light dark;
   --background: #ffffff;
@@ -211,3 +211,7 @@ input:focus, select:focus { outline: 2px solid color-mix(in srgb, var(--purple) 
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition: none !important; }
 }
+
+.brand-group { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.version { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 600px) { .brand-group { gap: 8px; } .version { font-size: 9px; } }
