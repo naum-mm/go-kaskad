@@ -1,0 +1,56 @@
+name: Publish release
+on:
+  workflow_run:
+    workflows: [Web stack]
+    branches: [main]
+    types: [completed]
+permissions:
+  contents: read
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - name: Read version and release notes from changelog
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import re
+
+          text = Path('CHANGELOG.md').read_text()
+          match = re.search(r'^## (v\d+\.\d+\.\d+) — [^\n]+\n(.*?)(?=^## |\Z)', text, re.M | re.S)
+          if not match:
+              raise SystemExit('No release version found in CHANGELOG.md')
+          tag, notes = match.groups()
+          Path('.local').mkdir(exist_ok=True)
+          guide = f'https://github.com/{os.environ["GITHUB_REPOSITORY"]}/blob/{tag}/docs/web.ru.md'
+          Path('.local/release-notes.md').write_text(notes.strip() + '\n\nИнструкция обновления / Upgrade guide: ' + guide + '\n')
+          with open(os.environ['GITHUB_ENV'], 'a') as output:
+              output.write(f'RELEASE_TAG={tag}\n')
+          PY
+      - name: Publish tested commit if this version is new
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; leaving it unchanged."
+          else
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+              --target "$RELEASE_COMMIT" --title "Gokaskad $RELEASE_TAG" \
+              --notes-file .local/release-notes.md --latest
+          fi
