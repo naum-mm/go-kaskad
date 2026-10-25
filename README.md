@@ -4,6 +4,8 @@
 
 ## Русский
 
+**Релиз v0.1.0:** дизайн BOX4ONE, автоматическая светлая/тёмная тема и обновлённая мобильная вёрстка. [Обновление существующей установки](docs/web.ru.md#обновление-до-v010--дизайн-box4one) · [История изменений](CHANGELOG.md).
+
 **Gokaskad — простая веб-панель для перенаправления TCP/UDP-портов на Linux-сервере.**
 
 Например: соединение с портом `8080` вашего сервера отправляется на
@@ -110,6 +112,8 @@ OpenBSD-скрипт остаётся отдельным CLI, веб-панел�
 `/root/gokaskad-backups` сохраняются отдельно; удалите их вручную, если они больше не нужны.
 
 ## English
+
+**Release v0.1.0:** BOX4ONE styling, automatic light/dark appearance and refreshed mobile layout. [Changelog](CHANGELOG.md) · [Upgrade an existing installation](docs/proxy.en.md#upgrading-to-v010).
 
 **Gokaskad is a simple web panel for forwarding TCP/UDP ports on a Linux server.**
 

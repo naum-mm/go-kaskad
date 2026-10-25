@@ -113,3 +113,39 @@ handed to the child installer using a temporary root-only file, never argv or `.
 Legacy `--configure-domain` and `--resume-domain` commands remain available for
 existing installations and unfinished older domain setup. They use Certbot.
 The menu's mode-change action replaces the old manual update-then-configure flow.
+
+
+## Upgrading to v0.1.0
+
+This release brings the BOX4ONE visual style, automatic system light/dark appearance,
+and refreshed forms and mobile layout. The API and database format are unchanged;
+no rule migration or new environment variables are needed.
+
+Run on the existing Linux server:
+
+```bash
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/naum-mm/go-kaskad/main/install.sh | sudo bash -s -- --update
+```
+
+This installs the latest `main`, including v0.1.0 once merged, and any subsequent
+changes. The updater backs up configuration and a consistent database snapshot
+under `/root/gokaskad-backups`, then rebuilds the services while retaining credentials,
+rules, port, deployment mode and certificates. Keep the printed backup path.
+Forwarding may briefly pause during recreation. Do not use `docker compose down -v`.
+
+After a successful update:
+
+```bash
+cd /opt/go-kaskad/current
+sudo docker compose ps
+sudo docker compose exec -T nginx nginx -t
+```
+
+Confirm services are running, API/worker are healthy, and nginx validation succeeds.
+Open the existing panel URL and hard-refresh (`Ctrl+Shift+R`, or `Cmd+Shift+R` on Mac).
+Verify persisted rules, worker connection, firewall visibility and existing forwarding.
+Appearance follows the device's light/dark setting.
+
+On failure the updater attempts to restart the previous release. Check its output
+and service health; retain the previous release and backup. Inspect logs with
+`sudo docker compose logs --tail=100 nginx gui api worker` from the current directory.
