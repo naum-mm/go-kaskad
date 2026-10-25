@@ -160,7 +160,7 @@ def nginx(plan, *args):
 def marked(content):
     if BEGIN in content or END in content:
         if content.count(BEGIN) != 1 or content.count(END) != 1:
-            raise SetupError('Повреждены маркеры конфигурации Gokaskad.')
+            raise SetupError('Повреждены маркеры конфигурации Kaskad.')
         before, rest = content.split(BEGIN)
         block, after = rest.split(END)
         return before, block, after
@@ -348,7 +348,7 @@ def setup(plan, domain, port, auth_file):
     conf = Path(plan['conf'])
     original = conf.read_text() if conf.exists() else ''
     if BEGIN in original or END in original:
-        raise SetupError('В nginx уже есть блок Gokaskad; автоматическая замена остановлена.')
+        raise SetupError('В nginx уже есть блок Kaskad; автоматическая замена остановлена.')
     dump = nginx(plan, '-T')
     # Reject exact, wildcard and regex server names that may already handle this domain.
     for names in re.findall(r'\bserver_name\s+([^;]+);', dump.stdout + dump.stderr):
@@ -568,7 +568,7 @@ def main():
                 remove(plan, preserve_certificate=args.preserve_certificate)
     except (SetupError, OSError, ValueError, subprocess.SubprocessError) as exc:
         # Command output may include configuration secrets. Do not dump nginx -T or certificate keys.
-        print(f'Gokaskad: {exc}', file=sys.stderr)
+        print(f'Kaskad: {exc}', file=sys.stderr)
         return 1
     return 0
 

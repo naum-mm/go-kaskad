@@ -47,7 +47,7 @@ def main():
     for path in (root / 'config/tls', root / 'current', fixture / 'acme', fixture / 'site', fixture / 'panel', le / 'renewal'):
         path.mkdir(parents=True, exist_ok=True)
     run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2',
-         '-subj', '/CN=Gokaskad disposable test CA', '-keyout', str(key), '-out', str(ca)])
+         '-subj', '/CN=Kaskad disposable test CA', '-keyout', str(key), '-out', str(ca)])
 
     # Match cross-signed ACME chains: leaf -> issuing CA -> intermediate -> trusted root.
     intermediate = fixture / 'intermediate.crt'
@@ -56,7 +56,7 @@ def main():
     intermediate_ext = fixture / 'intermediate.cnf'
     intermediate_ext.write_text('basicConstraints=critical,CA:TRUE,pathlen:1\nkeyUsage=critical,keyCertSign,cRLSign\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n')
     run(['openssl', 'req', '-new', '-newkey', 'rsa:2048', '-nodes',
-         '-subj', '/CN=Gokaskad disposable intermediate CA',
+         '-subj', '/CN=Kaskad disposable intermediate CA',
          '-keyout', str(intermediate_key), '-out', str(intermediate_csr)])
     run(['openssl', 'x509', '-req', '-in', str(intermediate_csr), '-CA', str(ca),
          '-CAkey', str(key), '-CAcreateserial', '-days', '2', '-extfile',
@@ -68,7 +68,7 @@ def main():
     issuing_ext = fixture / 'issuing.cnf'
     issuing_ext.write_text('basicConstraints=critical,CA:TRUE,pathlen:0\nkeyUsage=critical,keyCertSign,cRLSign\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n')
     run(['openssl', 'req', '-new', '-newkey', 'rsa:2048', '-nodes',
-         '-subj', '/CN=Gokaskad disposable issuing CA',
+         '-subj', '/CN=Kaskad disposable issuing CA',
          '-keyout', str(issuing_key), '-out', str(issuing_csr)])
     run(['openssl', 'x509', '-req', '-in', str(issuing_csr), '-CA', str(intermediate),
          '-CAkey', str(intermediate_key), '-CAcreateserial', '-days', '2', '-extfile',

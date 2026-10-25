@@ -36,6 +36,8 @@ jobs:
           if not match:
               raise SystemExit('No release version found in CHANGELOG.md')
           tag, notes = match.groups()
+          if tag != 'v' + Path('VERSION').read_text().strip():
+              raise SystemExit('VERSION does not match the latest changelog entry')
           Path('.local').mkdir(exist_ok=True)
           guide = f'https://github.com/{os.environ["GITHUB_REPOSITORY"]}/blob/{tag}/docs/web.ru.md'
           Path('.local/release-notes.md').write_text(notes.strip() + '\n\nИнструкция обновления / Upgrade guide: ' + guide + '\n')
@@ -51,6 +53,6 @@ jobs:
             echo "Release $RELEASE_TAG already exists; leaving it unchanged."
           else
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-              --target "$RELEASE_COMMIT" --title "Gokaskad $RELEASE_TAG" \
+              --target "$RELEASE_COMMIT" --title "Kaskad $RELEASE_TAG" \
               --notes-file .local/release-notes.md --latest
           fi
